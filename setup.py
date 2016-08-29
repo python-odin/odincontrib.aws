@@ -9,7 +9,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='odin.contrib.aws',
+    name='odincontrib.aws',
 
     version='0.1',
 
@@ -47,7 +47,7 @@ setup(
 
     keywords='data-structure validation data-mapping aws dynamodb sqs',
 
-    packages=find_packages(exclude=('tests',)),
+    packages=find_packages(include=('odincontrib_aws*',)),
 
     install_requires=['odin', 'six'],
 )
