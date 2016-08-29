@@ -3,6 +3,7 @@ from odin import datetimeutil
 from odincontrib_aws.dynamodb import fields
 
 TEST_DATETIME = datetimeutil.datetime.datetime(1942, 11, 27, 11, 12, 13, 0, datetimeutil.utc)
+TEST_NAIVE_DATETIME = datetimeutil.datetime.datetime(1942, 11, 27, 11, 12, 13, 0)
 
 
 @pytest.mark.parametrize(('field_type', 'value', 'expected'), (
@@ -21,6 +22,10 @@ TEST_DATETIME = datetimeutil.datetime.datetime(1942, 11, 27, 11, 12, 13, 0, date
 
     (fields.DateTimeField, TEST_DATETIME, {'S': '1942-11-27T11:12:13+00:00'}),
     (fields.DateTimeField, None, {'NULL': True}),
+
+    (fields.NaiveDateTimeField, TEST_DATETIME, {'S': '1942-11-27T11:12:13+00:00'}),
+    (fields.NaiveDateTimeField, TEST_NAIVE_DATETIME, {'S': '1942-11-27T11:12:13'}),
+    (fields.NaiveDateTimeField, None, {'NULL': True}),
 ))
 def test_field__prepare_db(field_type, value, expected):
     """
@@ -59,6 +64,12 @@ def test_field__prepare_db(field_type, value, expected):
     (fields.DateTimeField, '1942-11-27T11:12:13Z', TEST_DATETIME),
     (fields.DateTimeField, {'S': '1942-11-27T11:12:13Z'}, TEST_DATETIME),
     (fields.DateTimeField, {'NULL': True}, None),
+
+    (fields.NaiveDateTimeField, '1942-11-27T11:12:13Z', TEST_DATETIME),
+    (fields.NaiveDateTimeField, {'S': '1942-11-27T11:12:13Z'}, TEST_DATETIME),
+    (fields.NaiveDateTimeField, '1942-11-27T11:12:13', TEST_NAIVE_DATETIME),
+    (fields.NaiveDateTimeField, {'S': '1942-11-27T11:12:13'}, TEST_NAIVE_DATETIME),
+    (fields.NaiveDateTimeField, {'NULL': True}, None),
 ))
 def test_field__to_python(field_type, value, expected):
     """

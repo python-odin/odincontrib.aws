@@ -108,6 +108,8 @@ class NaiveDateTimeField(DynamoField, fields.NaiveDateTimeField):
     type_descriptor = 'S'
 
     def prepare(self, value):
-        if value:
-            value = datetime_iso_format(value)
+        if value is not None:
+            if self.ignore_timezone:
+                value.replace(tzinfo=None)
+            return value.isoformat()
         return super(NaiveDateTimeField, self).prepare(value)
