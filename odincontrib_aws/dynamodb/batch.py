@@ -7,14 +7,14 @@ logger = logging.getLogger("odincontrib.aws.dynamodb.batch")
 MAX_DYNAMO_BATCH_SIZE = 25
 
 
-def batch_write(client, resources, batch_size=MAX_DYNAMO_BATCH_SIZE, batch_debug_count=MAX_DYNAMO_BATCH_SIZE):
+def batch_write(client, resources, batch_size=MAX_DYNAMO_BATCH_SIZE, batch_counter_step=MAX_DYNAMO_BATCH_SIZE):
     """
     Batch write table resources to DynamoDB
 
     :param client: DynamoDB client
     :param resources: Iterable of resources to batch load.
     :param batch_size: Size of each batch.
-    :param batch_debug_count: Number of batches loaded between each DEBUG message.
+    :param batch_counter_step: Number of batches loaded between each counter message.
 
     """
     idx = 0
@@ -29,8 +29,8 @@ def batch_write(client, resources, batch_size=MAX_DYNAMO_BATCH_SIZE, batch_debug
             )
             item_count += 1
 
-        if logger.isEnabledFor(logging.DEBUG) and (idx % batch_debug_count) == 0:
-            logger.debug("Loading batch: %s", idx)
+        if (idx % batch_counter_step) == 0:
+            logger.info("Loading batch: %s", idx)
 
         client.batch_write_item(RequestItems=batch)
 
