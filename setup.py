@@ -49,5 +49,5 @@ setup(
 
     packages=find_packages(include=('odincontrib_aws*',)),
 
-    install_requires=['odin', 'six'],
+    install_requires=['https://github.com/python-odin/odin/archive/release-0.9a0.zip', 'six'],
 )
