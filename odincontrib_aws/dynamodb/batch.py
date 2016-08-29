@@ -18,6 +18,8 @@ def batch_write(client, resources, batch_size=MAX_DYNAMO_BATCH_SIZE, batch_debug
 
     """
     idx = 0
+    item_count = 0
+
     batch = defaultdict(list)
     for idx, batch_resources in enumerate(chunk(resources, batch_size)):
         batch.clear()
@@ -25,10 +27,11 @@ def batch_write(client, resources, batch_size=MAX_DYNAMO_BATCH_SIZE, batch_debug
             batch[resource.__class__.format_table_name(client)].append(
                 {'PutRequest': {'Item': resource.to_dynamo_dict(skip_null_fields=True)}}
             )
+            item_count += 1
 
         if logger.isEnabledFor(logging.DEBUG) and (idx % batch_debug_count) == 0:
             logger.debug("Loading batch: %s", idx)
 
         client.batch_write_item(RequestItems=batch)
 
-    logger.info("Loaded %s records in %s batches.", (idx * batch_size) + len(batch), idx + 1)
+    logger.info("Loaded %s records in %s batches.", item_count, idx + 1)
