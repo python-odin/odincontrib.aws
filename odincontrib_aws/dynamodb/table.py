@@ -3,6 +3,7 @@ Resources as as tables
 """
 import odin
 from odin.resources import create_resource_from_dict
+from odin.utils import force_tuple
 
 from odincontrib_aws.dynamodb.utils import domino_field_iter_items, field_smart_iter
 
@@ -140,7 +141,7 @@ class Table(odin.Resource):
         Usage::
 
             >>> import boto3
-            >>> from odincontrib_dynamodb import fields
+            >>> from odincontrib_aws.dynamodb import fields
             >>>
             >>> class MyTable(Table):
             >>>     name = fields.StringField()
@@ -163,7 +164,7 @@ class Table(odin.Resource):
     # Alias put with Save
     save = put
 
-    def update(self, client, fields, key_field=None):
+    def update(self, client, fields, key_fields=None):
         """
         Update a resource in DynamoDB
 
@@ -173,7 +174,7 @@ class Table(odin.Resource):
 
         :param client: DynamoDB Client
         :param fields: List of fields to update
-        :param key_field: Field to mark as key; default is `key_field` defined
+        :param key_fields: Field(s) to mark as key; default is `key_fields` defined
             in meta. This can be multiple fields.
 
         """
@@ -182,18 +183,16 @@ class Table(odin.Resource):
         elif not isinstance(fields, list):
             fields = [fields]
 
-        key_field = key_field or self._meta.key_field
-        if not isinstance(key_field, (list, tuple)):
-            key_field = [key_field]
+        key_fields = force_tuple(key_fields or self._meta.key_field)
 
         if hasattr(self, 'on_save'):
-            extra_fields = self.on_save(key_fields=key_field, is_update=True)
+            extra_fields = self.on_save(key_fields=key_fields, is_update=True)
             if extra_fields:
                 fields.extend(extra_fields)
 
         table_name = self.format_table_name(client)
         client.update_item(
             TableName=table_name,
-            Key=self.to_dynamo_dict(key_field),
+            Key=self.to_dynamo_dict(key_fields),
             AttributeUpdates=self.to_dynamo_dict(fields, is_update=True)
         )
