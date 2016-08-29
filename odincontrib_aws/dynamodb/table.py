@@ -1,13 +1,18 @@
 """
 Resources as as tables
 """
+import logging
 import odin
+
 from odin.resources import create_resource_from_dict
-from odin.utils import force_tuple
+from odin.utils import force_tuple, chunk
 
 from odincontrib_aws.dynamodb.utils import domino_field_iter_items, field_smart_iter
+from odincontrib_aws.dynamodb.batch import batch_write
 
 __all__ = ('Table',)
+
+logger = logging.getLogger("odincontrib.aws.dynamodb.table")
 
 
 class QueryResult(object):
@@ -48,6 +53,42 @@ class Table(odin.Resource):
         """
         prefix = getattr(client, 'prefix', None)
         return '{}-{}'.format(prefix, cls._meta.resource_name) if prefix else cls._meta.resource_name
+
+    @classmethod
+    def create_table(cls, client):
+        """
+        Create a table in DynamoDB
+
+        :param client:
+
+        """
+        # Build key schema
+        key_schema = []
+        key_fields = cls._meta.key_fields
+        if 1 > len(key_fields) > 2:
+            raise KeyError("A dynamo table must have either a single HASH key or a HASH/RANGE key pair.")
+        key_schema.append({
+            'AttributeName': key_fields[0].name,
+            'KeyType': 'HASH'
+        })
+        if len(key_fields) == 2:
+            key_schema.append({
+                'AttributeName': key_fields[1].name,
+                'KeyType': 'RANGE'
+            })
+
+        # Build attribute definitions
+        attribute_definitions = [{
+            'AttributeName': field.name,
+            'AttributeType': field.type_descriptor
+        } for field in key_fields]
+
+        # Call create
+        return client.create_table(
+            TableName=cls.format_table_name(client),
+            KeySchema=key_schema,
+            AttributeDefinitions=attribute_definitions,
+        )
 
     @classmethod
     def get_item(cls, client, **filters):
@@ -97,6 +138,38 @@ class Table(odin.Resource):
         return QueryResult(cls, result)
 
     @classmethod
+    def empty(cls, client, batch_counter_step=25):
+        """
+        Empty table
+        """
+        table_name = cls.format_table_name(client)
+
+        keys = client.scan(
+            TableName=table_name,
+            ProjectionExpression=','.join(f.name for f in cls._meta.key_fields),
+        )
+
+        # Batch delete
+        idx = 0
+        item_count = 0
+
+        for idx, batch_keys in enumerate(chunk(keys['Items'], 25)):
+            batch = [
+                {'DeleteRequest': {'Key': key}} for key in batch_keys
+            ]
+            item_count += len(batch)
+
+            if (idx % batch_counter_step) == 0:
+                logger.info("Deleting batch: %s", idx)
+
+            result = client.batch_write_item(RequestItems={
+                table_name: batch
+            })
+            pass
+
+        logger.info("Deleted %s records in %s batches.", item_count, idx + 1)
+
+    @classmethod
     def import_csv(cls, c, client):
         """
         Import a CSV of data into a table.
@@ -105,9 +178,9 @@ class Table(odin.Resource):
         :param client: DynamoDB Client
 
         """
-        for row in c:
-            item = create_resource_from_dict(row, cls, copy_dict=False)
-            item.put(client)
+        batch_write(client, (
+            create_resource_from_dict(row, cls, copy_dict=False) for row in c
+        ))
 
     def to_dynamo_dict(self, fields=None, is_update=False, skip_null_fields=False):
         """
@@ -183,7 +256,7 @@ class Table(odin.Resource):
         elif not isinstance(fields, list):
             fields = [fields]
 
-        key_fields = force_tuple(key_fields or self._meta.key_field)
+        key_fields = force_tuple(key_fields or self._meta.key_fields)
 
         if hasattr(self, 'on_save'):
             extra_fields = self.on_save(key_fields=key_fields, is_update=True)
