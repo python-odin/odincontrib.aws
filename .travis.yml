@@ -1,0 +1,22 @@
+language: python
+sudo: false
+python:
+  - "2.7"
+  - "3.4"
+  - "3.5"
+  - "pypy"
+
+branches:
+  only:
+    - master
+
+install:
+  - travis_retry pip install -Ur requirements.txt pytest pytest-cov pytest-mock
+  - if [[ $TRAVIS_PYTHON_VERSION != 'pypy' ]]; then travis_retry pip install coveralls; fi
+
+script:
+  - py.test tests/ --cov=odincontrib_dynamodb
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
+  - if [[ $TRAVIS_PYTHON_VERSION != 'pypy' ]]; then coveralls; fi
