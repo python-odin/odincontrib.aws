@@ -1,2 +1,3 @@
+boto3
 https://github.com/python-odin/odin/archive/release-0.9a0.zip
 six
