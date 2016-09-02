@@ -3,7 +3,9 @@ from odin import datetimeutil
 from odincontrib_aws.dynamodb import fields
 
 TEST_DATE = datetimeutil.datetime.date(1942, 11, 27)
+TEST_TIME = datetimeutil.datetime.time(11, 12, 13, 0, datetimeutil.utc)
 TEST_DATETIME = datetimeutil.datetime.datetime(1942, 11, 27, 11, 12, 13, 0, datetimeutil.utc)
+TEST_NAIVE_TIME = datetimeutil.datetime.time(11, 12, 13, 0)
 TEST_NAIVE_DATETIME = datetimeutil.datetime.datetime(1942, 11, 27, 11, 12, 13, 0)
 
 
@@ -23,6 +25,9 @@ TEST_NAIVE_DATETIME = datetimeutil.datetime.datetime(1942, 11, 27, 11, 12, 13, 0
 
     (fields.DateField, TEST_DATE, {'S': '1942-11-27'}),
     (fields.DateField, None, {'NULL': True}),
+
+    (fields.TimeField, TEST_TIME, {'S': '11:12:13+00:00'}),
+    (fields.TimeField, None, {'NULL': True}),
 
     (fields.DateTimeField, TEST_DATETIME, {'S': '1942-11-27T11:12:13+00:00'}),
     (fields.DateTimeField, None, {'NULL': True}),
@@ -69,9 +74,19 @@ def test_field__prepare_db(field_type, value, expected):
     (fields.DateField, {'S': '1942-11-27'}, TEST_DATE),
     (fields.DateField, {'NULL': True}, None),
 
+    (fields.TimeField, '11:12:13Z', TEST_TIME),
+    (fields.TimeField, {'S': '11:12:13+00:00'}, TEST_TIME),
+    (fields.TimeField, {'NULL': True}, None),
+
     (fields.DateTimeField, '1942-11-27T11:12:13Z', TEST_DATETIME),
     (fields.DateTimeField, {'S': '1942-11-27T11:12:13Z'}, TEST_DATETIME),
     (fields.DateTimeField, {'NULL': True}, None),
+
+    (fields.NaiveTimeField, '11:12:13Z', TEST_TIME),
+    (fields.NaiveTimeField, {'S': '11:12:13+00:00'}, TEST_TIME),
+    (fields.NaiveTimeField, '11:12:13', TEST_NAIVE_TIME),
+    (fields.NaiveTimeField, {'S': '11:12:13'}, TEST_NAIVE_TIME),
+    (fields.NaiveTimeField, {'NULL': True}, None),
 
     (fields.NaiveDateTimeField, '1942-11-27T11:12:13Z', TEST_DATETIME),
     (fields.NaiveDateTimeField, {'S': '1942-11-27T11:12:13Z'}, TEST_DATETIME),
