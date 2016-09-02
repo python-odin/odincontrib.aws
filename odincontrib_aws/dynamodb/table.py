@@ -6,34 +6,15 @@ import odin
 
 from odin.resources import create_resource_from_dict
 from odin.utils import force_tuple, chunk
+from odin.compatibility import deprecated
 
-from odincontrib_aws.dynamodb.utils import domino_field_iter_items, field_smart_iter
 from odincontrib_aws.dynamodb.batch import batch_write
+from odincontrib_aws.dynamodb.session import QueryResult
+from odincontrib_aws.dynamodb.utils import domino_field_iter_items, field_smart_iter
 
 __all__ = ('Table',)
 
 logger = logging.getLogger("odincontrib.aws.dynamodb.table")
-
-
-class QueryResult(object):
-    def __init__(self, table, result):
-        self._table = table
-        self._result = result
-
-    def __len__(self):
-        return self.count
-
-    def __iter__(self):
-        for item in self._result['Items']:
-            yield create_resource_from_dict(item, self._table, copy_dict=False, full_clean=False)
-
-    @property
-    def count(self):
-        return self._result['Count']
-
-    @property
-    def scanned(self):
-        return self._result['ScannedCount']
 
 
 class Table(odin.Resource):
@@ -44,53 +25,29 @@ class Table(odin.Resource):
         abstract = True
 
     @classmethod
-    def format_table_name(cls, client):
+    def format_table_name(cls, session):
         """
         Format a tables name.
-
-        :param client: DynamoDB Client
-
         """
-        prefix = getattr(client, 'prefix', None)
+        prefix = getattr(session, 'prefix', None)
         return '{}-{}'.format(prefix, cls._meta.resource_name) if prefix else cls._meta.resource_name
 
     @classmethod
-    def create_table(cls, client):
+    def format_key(cls, key_values):
         """
-        Create a table in DynamoDB
+        Format a key (or key pair) from values supplied.
 
-        :param client:
+        :param key_values:
 
         """
-        # Build key schema
-        key_schema = []
+        key_values = force_tuple(key_values)
         key_fields = cls._meta.key_fields
-        if 1 > len(key_fields) > 2:
-            raise KeyError("A dynamo table must have either a single HASH key or a HASH/RANGE key pair.")
-        key_schema.append({
-            'AttributeName': key_fields[0].name,
-            'KeyType': 'HASH'
-        })
-        if len(key_fields) == 2:
-            key_schema.append({
-                'AttributeName': key_fields[1].name,
-                'KeyType': 'RANGE'
-            })
-
-        # Build attribute definitions
-        attribute_definitions = [{
-            'AttributeName': field.name,
-            'AttributeType': field.type_descriptor
-        } for field in key_fields]
-
-        # Call create
-        return client.create_table(
-            TableName=cls.format_table_name(client),
-            KeySchema=key_schema,
-            AttributeDefinitions=attribute_definitions,
-        )
+        if len(key_values) != len(key_fields):
+            raise KeyError("This table uses a multi part key, `key_value` must be pair of values in a tuple.")
+        return {f.name: f.prepare_dynamo(v) for f, v in zip(key_values, key_fields)}
 
     @classmethod
+    @deprecated("To be removed in a later version please migrate to `session.get_item`.")
     def get_item(cls, client, **filters):
         """
         Get an item from DynamoDB
@@ -116,6 +73,7 @@ class Table(odin.Resource):
             return create_resource_from_dict(row, cls, copy_dict=False, full_clean=False)
 
     @classmethod
+    @deprecated("To be removed in a later version please migrate to `session.query`.")
     def query(cls, client, key_conditions=None, **kwargs):
         """
         Perform a query operation on table
@@ -138,6 +96,7 @@ class Table(odin.Resource):
         return QueryResult(cls, result)
 
     @classmethod
+    @deprecated("To be removed in a later version, use `session.delete_table` and `session.create_table`.")
     def empty(cls, client, batch_counter_step=25):
         """
         Empty table
@@ -170,6 +129,7 @@ class Table(odin.Resource):
         logger.info("Deleted %s records in %s batches.", item_count, idx + 1)
 
     @classmethod
+    @deprecated("To be removed in a later version please migrate to `session.batch_item_write`.")
     def import_csv(cls, c, client):
         """
         Import a CSV of data into a table.
@@ -207,6 +167,7 @@ class Table(odin.Resource):
         else:
             return {f.name: v for f, v in domino_field_iter_items(self, fields, skip_null_fields)}
 
+    @deprecated("To be removed in a later version please migrate to `session.put_item`.")
     def put(self, client):
         """
         Save complete resource to DynamoDB.
@@ -214,11 +175,11 @@ class Table(odin.Resource):
         Usage::
 
             >>> import boto3
-            >>> from odincontrib_aws.dynamodb import fields
+            >>> from odincontrib_aws import dynamodb as dynamo
             >>>
-            >>> class MyTable(Table):
-            >>>     name = fields.StringField()
-            >>>     age = fields.IntegerField()
+            >>> class MyTable(dynamo.Table):
+            >>>     name = dynamo.StringField()
+            >>>     age = dynamo.IntegerField()
             >>>
             >>> client = boto3.client("DynamoDB")
             >>>
@@ -237,6 +198,7 @@ class Table(odin.Resource):
     # Alias put with Save
     save = put
 
+    @deprecated("To be removed in a later version please migrate to `session.update_item`.")
     def update(self, client, fields, key_fields=None):
         """
         Update a resource in DynamoDB
