@@ -11,7 +11,8 @@ parse results in DynamoDB typed JSON.
 from odin import fields
 from odin.serializers import datetime_iso_format
 
-__all__ = ('StringField', 'IntegerField', 'FloatField', 'BooleanField', 'DateTimeField', 'NaiveDateTimeField')
+__all__ = ('StringField', 'IntegerField', 'FloatField', 'BooleanField',
+           'DateField', 'DateTimeField', 'NaiveDateTimeField')
 
 
 class DynamoField(fields.Field):
@@ -81,6 +82,19 @@ class BooleanField(DynamoField, fields.BooleanField):
     Boolean field, utilises the `BOOL` type descriptor
     """
     type_descriptor = 'BOOL'
+
+
+class DateField(DynamoField, fields.DateField):
+    """
+    Date field that represents a date in a ISO8601 date string.
+    Utilises the `S` (string) type descriptor.
+    """
+    type_descriptor = 'S'
+
+    def prepare(self, value):
+        if value:
+            value = date_iso_format(value)
+        return super(DateField, self).prepare(value)
 
 
 class DateTimeField(DynamoField, fields.DateTimeField):
