@@ -9,7 +9,7 @@ parse results in DynamoDB typed JSON.
 
 """
 from odin import fields
-from odin.serializers import datetime_iso_format
+from odin.serializers import datetime_iso_format, date_iso_format
 
 __all__ = ('StringField', 'IntegerField', 'FloatField', 'BooleanField',
            'DateField', 'DateTimeField', 'NaiveDateTimeField')
