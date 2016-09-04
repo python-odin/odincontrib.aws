@@ -1,8 +1,10 @@
 import boto3
 import logging
 
+from botocore.exceptions import ClientError
 from odin.resources import create_resource_from_dict, NOT_PROVIDED
 from odincontrib_aws.dynamodb.batch import MAX_DYNAMO_BATCH_SIZE, batch_write
+from odincontrib_aws.dynamodb.exceptions import TableAlreadyExists
 
 logger = logging.getLogger('odincontrib_aws.dynamodb.session')
 
@@ -239,7 +241,12 @@ class Session(object):
         } for field in key_fields]
 
         # Call create
-        return self.client.create_table(**kwargs)
+        try:
+            return self.client.create_table(**kwargs)
+        except ClientError as ex:
+            if ex.response['Error']['Code'] == u'ResourceInUseException':
+                raise TableAlreadyExists(ex.response['Error']['Message'])
+            raise
 
     def delete_table(self, table):
         """
