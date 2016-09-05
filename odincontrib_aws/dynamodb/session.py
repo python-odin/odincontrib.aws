@@ -41,6 +41,52 @@ class QueryResult(object):
     def consumed_capacity(self):
         return self._result['ConsumedCapacity']
 
+    @property
+    def last_evaluated_key(self):
+        return self._result.get('LastEvaluatedKey')
+
+
+class PagedQueryResult(object):
+    """
+    Batched results of a Query or Scan operation.
+
+    This result set will make multiple queries to Dynamo DB to get each page of results.
+    """
+    def __init__(self, query):
+        self.query = query
+
+        self.pages = 0
+        self.count = 0
+        self.scanned = 0
+        self.last_page = False
+
+    def __iter__(self):
+        query = self.query
+        params = query._get_params().copy()
+
+        while True:
+            logger.info("Fetching page: %s", self.pages)
+
+            results = QueryResult(query, query._command(**params))
+
+            # Update stats
+            self.pages += 1
+            self.count += results.count
+            self.scanned += results.scanned
+            self.last_page = results.last_evaluated_key is None
+
+            # Yield results
+            for idx, result in enumerate(results):
+                yield result
+
+            # Determine if we are done or need to get the next page
+            if self.last_page:
+                break
+            else:
+                logger.info("Returned %s of %s records; continuing from: %s",
+                            results.count, self.count, results.last_evaluated_key)
+                params['ExclusiveStartKey'] = results.last_evaluated_key
+
 
 class QueryBase(object):
     """
@@ -70,12 +116,18 @@ class QueryBase(object):
         query._params = self._params.copy()
         return query
 
+    def single(self):
+        """
+        Execute operation and return a single page only.
+        """
+        result = self._command(**self._get_params())
+        return QueryResult(self, result)
+
     def all(self):
         """
         Execute operation and return result object
         """
-        result = self._command(**self._get_params())
-        return QueryResult(self, result)
+        return PagedQueryResult(self)
 
     def params(self, **params):
         """
