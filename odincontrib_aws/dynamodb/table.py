@@ -47,7 +47,7 @@ class Table(odin.Resource):
         return {f.name: f.prepare_dynamo(v) for f, v in zip(key_values, key_fields)}
 
     @classmethod
-    @deprecated("To be removed in a later version please migrate to `session.get_item`.")
+    #@deprecated("To be removed in a later version please migrate to `session.get_item`.")
     def get_item(cls, client, **filters):
         """
         Get an item from DynamoDB
@@ -73,7 +73,7 @@ class Table(odin.Resource):
             return create_resource_from_dict(row, cls, copy_dict=False, full_clean=False)
 
     @classmethod
-    @deprecated("To be removed in a later version please migrate to `session.query`.")
+    #@deprecated("To be removed in a later version please migrate to `session.query`.")
     def query(cls, client, key_conditions=None, **kwargs):
         """
         Perform a query operation on table
@@ -96,7 +96,7 @@ class Table(odin.Resource):
         return QueryResult(cls, result)
 
     @classmethod
-    @deprecated("To be removed in a later version, use `session.delete_table` and `session.create_table`.")
+    #@deprecated("To be removed in a later version, use `session.delete_table` and `session.create_table`.")
     def empty(cls, client, batch_counter_step=25):
         """
         Empty table
@@ -129,7 +129,7 @@ class Table(odin.Resource):
         logger.info("Deleted %s records in %s batches.", item_count, idx + 1)
 
     @classmethod
-    @deprecated("To be removed in a later version please migrate to `session.batch_item_write`.")
+    #@deprecated("To be removed in a later version please migrate to `session.batch_item_write`.")
     def import_csv(cls, c, client):
         """
         Import a CSV of data into a table.
@@ -198,7 +198,7 @@ class Table(odin.Resource):
     # Alias put with Save
     save = put
 
-    @deprecated("To be removed in a later version please migrate to `session.update_item`.")
+    #@deprecated("To be removed in a later version please migrate to `session.update_item`.")
     def update(self, client, fields, key_fields=None):
         """
         Update a resource in DynamoDB
