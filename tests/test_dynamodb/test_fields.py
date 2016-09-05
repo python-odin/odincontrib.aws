@@ -29,6 +29,10 @@ TEST_NAIVE_DATETIME = datetimeutil.datetime.datetime(1942, 11, 27, 11, 12, 13, 0
     (fields.TimeField, TEST_TIME, {'S': '11:12:13+00:00'}),
     (fields.TimeField, None, {'NULL': True}),
 
+    (fields.NaiveTimeField, TEST_TIME, {'S': '11:12:13+00:00'}),
+    (fields.NaiveTimeField, TEST_NAIVE_TIME, {'S': '11:12:13'}),
+    (fields.NaiveTimeField, None, {'NULL': True}),
+
     (fields.DateTimeField, TEST_DATETIME, {'S': '1942-11-27T11:12:13+00:00'}),
     (fields.DateTimeField, None, {'NULL': True}),
 
