@@ -9,12 +9,32 @@ from odin.utils import force_tuple, chunk
 from odin.compatibility import deprecated
 
 from odincontrib_aws.dynamodb.batch import batch_write
-from odincontrib_aws.dynamodb.session import QueryResult
 from odincontrib_aws.dynamodb.utils import domino_field_iter_items, field_smart_iter
 
 __all__ = ('Table',)
 
 logger = logging.getLogger("odincontrib.aws.dynamodb.table")
+
+
+class QueryResult(object):
+    def __init__(self, table, result):
+        self._table = table
+        self._result = result
+
+    def __len__(self):
+        return self.count
+
+    def __iter__(self):
+        for item in self._result['Items']:
+            yield create_resource_from_dict(item, self._table, copy_dict=False, full_clean=False)
+
+    @property
+    def count(self):
+        return self._result['Count']
+
+    @property
+    def scanned(self):
+        return self._result['ScannedCount']
 
 
 class Table(odin.Resource):
@@ -45,6 +65,8 @@ class Table(odin.Resource):
         if len(key_values) != len(key_fields):
             raise KeyError("This table uses a multi part key, `key_value` must be pair of values in a tuple.")
         return {f.name: f.prepare_dynamo(v) for f, v in zip(key_values, key_fields)}
+
+    # Deprecated methods
 
     @classmethod
     #@deprecated("To be removed in a later version please migrate to `session.get_item`.")
