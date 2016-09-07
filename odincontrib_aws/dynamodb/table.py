@@ -45,12 +45,15 @@ class Table(odin.Resource):
         abstract = True
 
     @classmethod
-    def format_table_name(cls, session):
+    def format_table_name(cls, session=None):
         """
         Format a tables name.
         """
-        prefix = getattr(session, 'prefix', None)
-        return '{}-{}'.format(prefix, cls._meta.resource_name) if prefix else cls._meta.resource_name
+        if session:
+            prefix = getattr(session, 'prefix', None)
+            if prefix:
+                return '{}-{}'.format(prefix, cls._meta.resource_name)
+        return cls._meta.resource_name
 
     @classmethod
     def format_key(cls, key_values):
