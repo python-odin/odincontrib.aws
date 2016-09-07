@@ -81,6 +81,7 @@ class PagedQueryResult(object):
 
             # Determine if we are done or need to get the next page
             if self.last_page:
+                logger.info("Returned %s of %s records.", results.count, self.count)
                 break
             else:
                 logger.info("Returned %s of %s records; continuing from: %s",
@@ -338,6 +339,9 @@ class Session(object):
 
         kwargs['Item'] = item.to_dynamo_dict()
         self.client.put_item(**kwargs)
+
+    # Alias put
+    save_item = put_item
 
     def batch_write_item(self, items, batch_size=MAX_DYNAMO_BATCH_SIZE):
         """
