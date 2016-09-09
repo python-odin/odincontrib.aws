@@ -1,17 +1,16 @@
-from odincontrib_aws import dynamodb as odin_dynamo
+from odincontrib_aws import dynamodb as dynamo
 
 
-class Book(odin_dynamo.Table):
+class Book(dynamo.Table):
     class Meta:
         namespace = 'library'
-        key_field_name = 'isbn'
 
-    title = odin_dynamo.StringField()
-    isbn = odin_dynamo.StringField()
-    num_pages = odin_dynamo.IntegerField()
-    rrp = odin_dynamo.FloatField(default=20.4, use_default_if_not_provided=True)
-    fiction = odin_dynamo.BooleanField(is_attribute=True)
-    genre = odin_dynamo.StringField(choices=(
+    title = dynamo.StringField()
+    isbn = dynamo.StringField(key=True)
+    num_pages = dynamo.IntegerField()
+    rrp = dynamo.FloatField(default=20.4, use_default_if_not_provided=True)
+    fiction = dynamo.BooleanField(is_attribute=True)
+    genre = dynamo.StringField(choices=(
         ('sci-fi', 'Science Fiction'),
         ('fantasy', 'Fantasy'),
         ('biography', 'Biography'),
@@ -21,6 +20,8 @@ class Book(odin_dynamo.Table):
     # published = odin.TypedArrayField(odin.DateTimeField())
     # authors = odin.ArrayOf(Author, use_container=True)
     # publisher = odin.DictAs(Publisher, null=True)
+
+    genre_index = dynamo.GlobalIndex('genre', 'isbn')
 
     def __eq__(self, other):
         if other:
