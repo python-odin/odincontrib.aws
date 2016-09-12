@@ -1,5 +1,7 @@
 import logging
 from collections import defaultdict
+
+from odin.compatibility import deprecated
 from odin.utils import chunk, getmeta
 
 logger = logging.getLogger("odincontrib.aws.dynamodb.batch")
@@ -7,6 +9,7 @@ logger = logging.getLogger("odincontrib.aws.dynamodb.batch")
 MAX_DYNAMO_BATCH_SIZE = 25
 
 
+@deprecated("Please use odincontrib_aws.dyanmodb.session.batch_write_items")
 def batch_write(client, resources, batch_size=MAX_DYNAMO_BATCH_SIZE, batch_counter_step=MAX_DYNAMO_BATCH_SIZE):
     """
     Batch write table resources to DynamoDB
