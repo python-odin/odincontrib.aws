@@ -22,12 +22,16 @@ class TableOptions(ResourceOptions):
     """
     Table specifc options
     """
-    META_OPTION_NAMES = ResourceOptions.META_OPTION_NAMES
+    META_OPTION_NAMES = ResourceOptions.META_OPTION_NAMES + (
+        'read_capacity', 'write_capacity'
+    )
 
     def __init__(self, meta):
         super(TableOptions, self).__init__(meta)
 
         self.indexes = defaultdict(list)
+        self.read_capacity = 1
+        self.write_capacity = 1
 
     def add_index(self, index):
         """
@@ -36,7 +40,7 @@ class TableOptions(ResourceOptions):
         self.indexes[index.index_type].append(index)
 
     def check(self):
-        if 1 > len(self.key_fields) > 2:
+        if not (0 < len(self.key_fields) < 3):
             raise KeyError("A dynamo table must have either a single HASH key or a HASH/RANGE key pair.")
 
     def table_name(self, session=None):
