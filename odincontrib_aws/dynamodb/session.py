@@ -77,11 +77,16 @@ class Session(object):
         } for field in meta.key_fields]
 
         # Build provisioned throughput
-        table_throughput = throughput.get(None) or dict()
-        kwargs['ProvisionedThroughput'] = [{
-            'ReadCapacityUnits': table_throughput.get('read_capacity', meta.read_capacity),
-            'WriteCapacityUnits': table_throughput.get('write_capacity', meta.write_capacity),
-        }]
+        table_throughput = {
+            'read_capacity': meta.read_capacity,
+            'write_capacity': meta.write_capacity,
+        }
+        table_throughput.update(throughput.get(None) or {})
+
+        kwargs['ProvisionedThroughput'] = {
+            'ReadCapacityUnits': table_throughput['read_capacity'],
+            'WriteCapacityUnits': table_throughput['write_capacity'],
+        }
 
         # Add indexes
         if meta.local_indexes:
@@ -92,8 +97,8 @@ class Session(object):
             for idx in meta.global_indexes:
                 index_throughput = throughput.get(idx.name) or dict()
                 indexes.append(idx.definition(
-                    read_capacity=index_throughput.get('read_capacity'),
-                    write_capacity=index_throughput.get('write_capacity'),
+                    read_capacity=index_throughput.get('read_capacity', table_throughput['read_capacity']),
+                    write_capacity=index_throughput.get('write_capacity', table_throughput['write_capacity']),
                 ))
             kwargs['GlobalSecondaryIndexes'] = indexes
 
