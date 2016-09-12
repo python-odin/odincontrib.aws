@@ -3,6 +3,7 @@ import logging
 from odin.compatibility import deprecated
 from odin.fields import NOT_PROVIDED
 from odin.resources import create_resource_from_dict
+from odin.utils import getmeta
 
 from odincontrib_aws.dynamodb.indexes import Index
 
@@ -62,7 +63,7 @@ class PagedQueryResult(object):
 
     def __iter__(self):
         query = self.query
-        params = query._get_params().copy()
+        params = query.get_params().copy()
 
         while True:
             logger.info("Fetching page: %s", self.pages)
@@ -110,9 +111,9 @@ class QueryBase(object):
     def __iter__(self):
         return iter(self.all())
 
-    def _get_params(self):
+    def get_params(self):
         params = self._params
-        params['TableName'] = self.table._meta.table_name(self.session)
+        params['TableName'] = getmeta(self.table).table_name(self.session)
         if self.index:
             params['IndexName'] = self.index.name
         return params
@@ -129,7 +130,7 @@ class QueryBase(object):
         """
         Execute operation and return a single page only.
         """
-        result = self._command(**self._get_params())
+        result = self._command(**self.get_params())
         return QueryResult(self, result)
 
     def all(self):
@@ -143,15 +144,6 @@ class QueryBase(object):
         Apply params that you would execute.
         """
         self._params.update(params)
-
-    @deprecated("Use either a GlobalIndex or LocalIndex class to defined indexes.")
-    def index(self, name):
-        """
-        The name of a secondary index to scan. This index can be any local
-        secondary index or global secondary index.
-        """
-        self._params['IndexName'] = name
-        return self
 
     def limit(self, value):
         """
@@ -233,11 +225,11 @@ class Query(QueryBase):
 
         self._command = self.session.client.query
 
-    def _get_params(self):
-        params = super(Query, self)._get_params()
+    def get_params(self):
+        params = super(Query, self).get_params()
 
         # Define Key conditions
-        key_fields = self.table._meta.key_fields
+        key_fields = getmeta(self.table).key_fields
         key_values = (self.hash_value, self._range_value)
         params['KeyConditions'] = {
             f.name: {'AttributeValueList': [f.prepare_dynamo(v)]}
