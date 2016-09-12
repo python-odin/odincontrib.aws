@@ -32,7 +32,7 @@ class Index(object):
     def contribute_to_class(self, cls, name):
         self.set_attributes_from_name(name)
         self.table = cls
-        cls._meta.add_index(self)
+        getmeta(cls).add_index(self)
         setattr(cls, name, self)
 
     @property
@@ -52,7 +52,10 @@ class Index(object):
             return (self.hash_field,)  # This is a tuple
 
     @property
-    def include_fields(self):
+    def included_fields(self):
+        """
+        Used by `include` projection, returns all non-key fields that have been specified.
+        """
         includes = self.includes or getmeta(self.table).field_map
         excludes = self.excludes or []
         return [
@@ -79,7 +82,7 @@ class Index(object):
         # Generate projection details
         projection = {'ProjectionType': self.projection}
         if self.projection == PROJECTION_INCLUDE:
-            projection['NonKeyAttributes'] = include_fields
+            projection['NonKeyAttributes'] = self.included_fields
 
         return {
             'IndexName': self.name,
