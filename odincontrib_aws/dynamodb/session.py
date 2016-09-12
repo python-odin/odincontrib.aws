@@ -3,6 +3,7 @@ import logging
 
 from botocore.exceptions import ClientError
 from odin.resources import create_resource_from_dict
+from odin.utils import getmeta
 
 from odincontrib_aws.dynamodb.batch import MAX_DYNAMO_BATCH_SIZE, batch_write
 from odincontrib_aws.dynamodb.exceptions import TableAlreadyExists
@@ -26,21 +27,38 @@ class Session(object):
         self.client = client or boto3.client('dynamodb')
         self.prefix = prefix
 
-    def create_table(self, table, **kwargs):
+    def create_table(self, table, throughput=None, **kwargs):
         """
         Create a table in DynamoDB
 
         :param table: Table to create; either type or instance.
+        :param throughput: Overrides for through put (read/write) capacity. This should be defined as a dictionary
+            where the table override is ``None`` and indexes are named eg::
+
+                throughput = {
+                    None: {
+                        'read_capacity': 10,
+                        'write_capacity': 5,
+                    },
+                    'my_index': {
+                        'read_capacity': 10,
+                        'write_capacity': 5,
+                    }
+                }
+
         :param kwargs: Additional parameters (defined by Boto3 ``client.create_table``).
         :returns: Create response
 
         """
-        meta = table._meta
+        throughput = throughput or {}
+
+        meta = getmeta(table)
         kwargs['TableName'] = meta.table_name(self)
 
         # Check metadata is correct
         meta.check()
 
+        # Build key schema
         key_schema = [{
             'AttributeName': meta.hash_field.name,
             'KeyType': 'HASH'
@@ -58,10 +76,26 @@ class Session(object):
             'AttributeType': field.type_descriptor
         } for field in meta.key_fields]
 
+        # Build provisioned throughput
+        table_throughput = throughput.get(None) or dict()
+        kwargs['ProvisionedThroughput'] = [{
+            'ReadCapacityUnits': table_throughput.get('read_capacity', meta.read_capacity),
+            'WriteCapacityUnits': table_throughput.get('write_capacity', meta.write_capacity),
+        }]
+
+        # Add indexes
         if meta.local_indexes:
-            kwargs['LocalSecondaryIndexes'] = [{
-                'IndexName'
-            } for idx in meta.local_indexes]
+            kwargs['LocalSecondaryIndexes'] = [idx.definition() for idx in meta.local_indexes]
+
+        if meta.global_indexes:
+            indexes = []
+            for idx in meta.global_indexes:
+                index_throughput = throughput.get(idx.name) or dict()
+                indexes.append(idx.definition(
+                    read_capacity=index_throughput.get('read_capacity'),
+                    write_capacity=index_throughput.get('write_capacity'),
+                ))
+            kwargs['GlobalSecondaryIndexes'] = indexes
 
         # Call create
         try:
@@ -79,7 +113,7 @@ class Session(object):
         :return: Delete response
 
         """
-        return self.client.delete_table(TableName=table.format_table_name(self))
+        return self.client.delete_table(TableName=getmeta(table).table_name(self))
 
     def put_item(self, item, **kwargs):
         """
@@ -102,8 +136,7 @@ class Session(object):
         :param item: Table instance to put into Dynamo.
 
         """
-        meta = item._meta
-        kwargs['TableName'] = meta.table_name(self)
+        kwargs['TableName'] = getmeta(item).table_name(self)
 
         if hasattr(item, 'on_store'):
             item.on_store(is_update=False)
@@ -137,8 +170,7 @@ class Session(object):
         :param kwargs:
 
         """
-        meta = item._meta
-        kwargs['TableName'] = meta.table_name(self)
+        kwargs['TableName'] = getmeta(item).table_name(self)
         kwargs['Key'] = item.to_dynamo_dict(meta.key_fields)
 
         if fields is None:
@@ -167,8 +199,7 @@ class Session(object):
         :return: Instance of this resource; or None if not found
 
         """
-        meta = table._meta
-        kwargs['TableName'] = meta.table_name(self)
+        kwargs['TableName'] = getmeta(item).table_name(self)
         kwargs['Key'] = table.format_key(key_value)
 
         # Get item from client
