@@ -45,6 +45,13 @@ class Index(object):
             return getmeta(self.table).field_map[self.range_key]
 
     @property
+    def key_fields(self):
+        if self.range_key:
+            return self.hash_field, self.range_field
+        else:
+            return (self.hash_field,)  # This is a tuple
+
+    @property
     def include_fields(self):
         includes = self.includes or getmeta(self.table).field_map
         excludes = self.excludes or []
