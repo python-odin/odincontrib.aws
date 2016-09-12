@@ -136,7 +136,6 @@ class Session(object):
 
         Usage::
 
-            >>> import boto3
             >>> from odincontrib_aws import dynamodb as dynamo
             >>>
             >>> class MyTable(dynamo.Table):
@@ -185,7 +184,8 @@ class Session(object):
         :param kwargs:
 
         """
-        kwargs['TableName'] = getmeta(item).table_name(self)
+        meta = getmeta(item)
+        kwargs['TableName'] = meta.table_name(self)
         kwargs['Key'] = item.to_dynamo_dict(meta.key_fields)
 
         if fields is None:
@@ -214,7 +214,7 @@ class Session(object):
         :return: Instance of this resource; or None if not found
 
         """
-        kwargs['TableName'] = getmeta(item).table_name(self)
+        kwargs['TableName'] = getmeta(table).table_name(self)
         kwargs['Key'] = table.format_key(key_value)
 
         # Get item from client
