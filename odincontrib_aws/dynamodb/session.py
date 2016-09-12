@@ -71,10 +71,7 @@ class Session(object):
         kwargs['KeySchema'] = key_schema
 
         # Build attribute definitions
-        kwargs['AttributeDefinitions'] = [{
-            'AttributeName': field.name,
-            'AttributeType': field.type_descriptor
-        } for field in meta.key_fields]
+        attributes = {field for field in meta.key_fields}
 
         # Build provisioned throughput
         table_throughput = {
@@ -88,19 +85,32 @@ class Session(object):
             'WriteCapacityUnits': table_throughput['write_capacity'],
         }
 
-        # Add indexes
+        # Add indexes and gather attributes
         if meta.local_indexes:
-            kwargs['LocalSecondaryIndexes'] = [idx.definition() for idx in meta.local_indexes]
+            indexes = []
+            for idx in meta.local_indexes:
+                indexes.append(idx.definition())
+                attributes.update({field for field in idx.key_fields})
+
+            kwargs['LocalSecondaryIndexes'] = indexes
 
         if meta.global_indexes:
             indexes = []
             for idx in meta.global_indexes:
-                index_throughput = throughput.get(idx.name) or dict()
+                index_throughput = throughput.get(idx.name) or {}
                 indexes.append(idx.definition(
                     read_capacity=index_throughput.get('read_capacity', table_throughput['read_capacity']),
                     write_capacity=index_throughput.get('write_capacity', table_throughput['write_capacity']),
                 ))
+                attributes.update({field for field in idx.key_fields})
+
             kwargs['GlobalSecondaryIndexes'] = indexes
+
+        # Build attribute definitions
+        kwargs['AttributeDefinitions'] = [{
+            'AttributeName': field.name,
+            'AttributeType': field.type_descriptor
+        } for field in attributes]
 
         # Call create
         try:
