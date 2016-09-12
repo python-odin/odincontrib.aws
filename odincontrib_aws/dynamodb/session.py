@@ -1,15 +1,18 @@
+from collections import defaultdict
+
 import boto3
 import logging
 
 from botocore.exceptions import ClientError
 from odin.resources import create_resource_from_dict
-from odin.utils import getmeta
+from odin.utils import getmeta, chunk
 
-from odincontrib_aws.dynamodb.batch import MAX_DYNAMO_BATCH_SIZE, batch_write
 from odincontrib_aws.dynamodb.exceptions import TableAlreadyExists
 from odincontrib_aws.dynamodb.query import Scan, Query
 
 logger = logging.getLogger('odincontrib_aws.dynamodb.session')
+
+MAX_DYNAMO_BATCH_SIZE = 25
 
 
 class Session(object):
@@ -161,15 +164,34 @@ class Session(object):
     # Alias put
     save_item = put_item
 
-    def batch_write_item(self, items, batch_size=MAX_DYNAMO_BATCH_SIZE):
+    def batch_write_item(self, items, batch_size=MAX_DYNAMO_BATCH_SIZE, batch_counter_step = MAX_DYNAMO_BATCH_SIZE):
         """
         Batch write a number of items into DynamoDB
 
         :param items: Iterable of resources (this can be different tables).
-        :param batch_size: Size of batch
+        :param batch_size: Size of each batch.
+        :param batch_counter_step: Number of batches loaded between each counter message.
 
         """
-        batch_write(self.client, items, batch_size)
+        idx = 0
+        item_count = 0
+
+        client = self.client
+        batch = defaultdict(list)
+        for idx, batch_resources in enumerate(chunk(items, batch_size)):
+            batch.clear()
+            for resource in batch_resources:
+                batch[getmeta(resource).table_name(self)].append(
+                    {'PutRequest': {'Item': resource.to_dynamo_dict(skip_null_fields=True)}}
+                )
+                item_count += 1
+
+            if (idx % batch_counter_step) == 0:
+                logger.info("Loading batch: %s", idx)
+
+            client.batch_write_item(RequestItems=batch)
+
+        logger.info("Loaded %s records in %s batches.", item_count, idx + 1)
 
     def update_item(self, item, fields=None, **kwargs):
         """
