@@ -5,7 +5,10 @@ import logging
 import six
 
 from collections import defaultdict
-from odin.resources import ResourceOptions, ResourceType, ResourceBase, create_resource_from_dict
+
+from odin import registration
+from odin.mapping import ResourceFieldResolver
+from odin.resources import ResourceOptions, ResourceType, ResourceBase
 from odin.utils import force_tuple, cached_property
 
 from odincontrib_aws.dynamodb.utils import domino_field_iter_items, field_smart_iter
@@ -117,3 +120,7 @@ class Table(ResourceBase):
                     for f, v in domino_field_iter_items(self, fields, skip_null_fields)}
         else:
             return {f.name: v for f, v in domino_field_iter_items(self, fields, skip_null_fields)}
+
+
+# Register tables as mappable by a standard resource field resolver
+registration.register_field_resolver(ResourceFieldResolver, Table)
