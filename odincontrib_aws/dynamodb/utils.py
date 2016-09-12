@@ -33,6 +33,6 @@ def domino_field_iter_items(resource, fields, skip_null_values=False):
     """
     for f in fields:
         value = f.value_from_object(resource)
-        if skip_null_values and value is None:
+        if skip_null_values and value in [None, '']:
             continue
         yield f, f.prepare_dynamo(value)
