@@ -1,3 +1,5 @@
+from odin.utils import getmeta
+
 __all__ = ('LocalIndex', 'GlobalIndex', 'PROJECTION_ALL', 'PROJECTION_INCLUDE', 'PROJECTION_KEYS_ONLY')
 
 
@@ -35,12 +37,48 @@ class Index(object):
 
     @property
     def hash_field(self):
-        return self.table._meta.field_map[self.hash_key]
+        return getmeta(self.table).field_map[self.hash_key]
 
     @property
     def range_field(self):
         if self.range_key:
-            return self.table._meta.field_map[self.range_key]
+            return getmeta(self.table).field_map[self.range_key]
+
+    @property
+    def include_fields(self):
+        includes = self.includes or getmeta(self.table).field_map
+        excludes = self.excludes or []
+        return [
+            field for field in getmeta(self.table).fields
+            if field.attname in includes and field.attname not in excludes
+            and field.attname != self.hash_key and field.attname != self.range_key
+        ]
+
+    def definition(self):
+        """
+        Generate a Index definition (used to create/update table)
+        """
+        # Generate KeySchema details
+        key_schema = [{
+            'AttributeName': self.hash_field.name,
+            'KeyType': 'HASH',
+        }]
+        if self.range_key:
+            key_schema.append({
+                'AttributeName': self.range_field.name,
+                'KeyType': 'RANGE',
+            })
+
+        # Generate projection details
+        projection = {'ProjectionType': self.projection}
+        if self.projection == PROJECTION_INCLUDE:
+            projection['NonKeyAttributes'] = include_fields
+
+        return {
+            'IndexName': self.name,
+            'KeySchema': key_schema,
+            'Projection': projection
+        }
 
 
 class LocalIndex(Index):
@@ -83,3 +121,29 @@ class GlobalIndex(Index):
 
     """
     index_type = 'global'
+
+    def __init__(self, hash_key, range_key=None, projection=PROJECTION_ALL, includes=None, excludes=None,
+                 read_capacity=None, write_capacity=None, name=None):
+        """
+        :param read_capacity: Override table read capacity
+        :param write_capacity: Override table write capacity
+        """
+        super(GlobalIndex, self).__init__(hash_key, range_key, projection, includes, excludes, name)
+        self.read_capacity = read_capacity
+        self.write_capacity = write_capacity
+
+    def definition(self, read_capacity=None, write_capacity=None):
+        """
+        Generate a Index definition (used to create/update table)
+
+        :param read_capacity: Override default read capacity
+        :param write_capacity: Override default write capacity
+
+        """
+        meta = getmeta(self.table)
+        definition = super(GlobalIndex, self).definition()
+        definition['ProvisionedThroughput'] = {
+            'ReadCapacityUnits': read_capacity or self.read_capacity or meta.read_capacity,
+            'WriteCapacityUnits': write_capacity or self.write_capacity or meta.write_capacity,
+        }
+        return definition
