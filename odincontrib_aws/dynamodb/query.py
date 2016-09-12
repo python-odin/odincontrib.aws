@@ -1,6 +1,5 @@
 import logging
 
-from odin.compatibility import deprecated
 from odin.fields import NOT_PROVIDED
 from odin.resources import create_resource_from_dict
 from odin.utils import getmeta
@@ -68,7 +67,7 @@ class PagedQueryResult(object):
         while True:
             logger.info("Fetching page: %s", self.pages)
 
-            results = QueryResult(query, query._command(**params))
+            results = QueryResult(query, query.command(**params))
 
             # Update stats
             self.pages += 1
@@ -105,14 +104,14 @@ class QueryBase(object):
             self.index = None
 
         self._expression_attributes = {}
-        self._params = {}
-        self._command = None
+        self.params = {}
+        self.command = None
 
     def __iter__(self):
         return iter(self.all())
 
     def get_params(self):
-        params = self._params
+        params = self.params
         params['TableName'] = getmeta(self.table).table_name(self.session)
         if self.index:
             params['IndexName'] = self.index.name
@@ -123,14 +122,14 @@ class QueryBase(object):
         Copy the Query.
         """
         query = self.__class__(self.session, self.table)
-        query._params = self._params.copy()
+        query.params = self.params.copy()
         return query
 
     def single(self):
         """
         Execute operation and return a single page only.
         """
-        result = self._command(**self.get_params())
+        result = self.command(**self.get_params())
         return QueryResult(self, result)
 
     def all(self):
@@ -143,7 +142,7 @@ class QueryBase(object):
         """
         Apply params that you would execute.
         """
-        self._params.update(params)
+        self.params.update(params)
 
     def limit(self, value):
         """
@@ -154,7 +153,7 @@ class QueryBase(object):
         apply in a subsequent operation, so that you can pick up where you
         left off.
         """
-        self._params['Limit'] = value
+        self.params['Limit'] = value
         return self
 
     def select(self, value='ALL_ATTRIBUTES'):
@@ -181,7 +180,7 @@ class QueryBase(object):
         """
         assert value in ('ALL_ATTRIBUTES', 'ALL_PROJECTED_ATTRIBUTES', 'COUNT', 'SPECIFIC_ATTRIBUTES')
 
-        self._params['Select'] = value
+        self.params['Select'] = value
         return self
 
     def consumed_capacity(self, value='TOTAL'):
@@ -201,7 +200,7 @@ class QueryBase(object):
         """
         assert value in ('INDEXES', 'TOTAL', 'NONE')
 
-        self._params['ReturnConsumedCapacity'] = value
+        self.params['ReturnConsumedCapacity'] = value
         return self
 
 
@@ -211,7 +210,7 @@ class Scan(QueryBase):
     """
     def __init__(self, *args):
         super(Scan, self).__init__(*args)
-        self._command = self.session.client.scan
+        self.command = self.session.client.scan
 
 
 class Query(QueryBase):
@@ -223,7 +222,7 @@ class Query(QueryBase):
         self.hash_value = hash_value
         self._range_value = NOT_PROVIDED
 
-        self._command = self.session.client.query
+        self.command = self.session.client.query
 
     def get_params(self):
         params = super(Query, self).get_params()
