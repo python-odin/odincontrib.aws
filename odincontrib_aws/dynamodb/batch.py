@@ -1,6 +1,6 @@
 import logging
 from collections import defaultdict
-from odin.utils import chunk
+from odin.utils import chunk, getmeta
 
 logger = logging.getLogger("odincontrib.aws.dynamodb.batch")
 
@@ -24,7 +24,7 @@ def batch_write(client, resources, batch_size=MAX_DYNAMO_BATCH_SIZE, batch_count
     for idx, batch_resources in enumerate(chunk(resources, batch_size)):
         batch.clear()
         for resource in batch_resources:
-            batch[resource._meta.table_name(client)].append(
+            batch[getmeta(resource).table_name(client)].append(
                 {'PutRequest': {'Item': resource.to_dynamo_dict(skip_null_fields=True)}}
             )
             item_count += 1

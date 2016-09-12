@@ -1,5 +1,6 @@
 import six
 from odin.fields import Field
+from odin.utils import getmeta
 
 
 def field_smart_iter(fields, resource):
@@ -11,7 +12,7 @@ def field_smart_iter(fields, resource):
     :return: Field iterator
 
     """
-    meta = resource._meta
+    meta = getmeta(resource)
     for field in fields:
         if isinstance(field, six.string_types):
             yield meta.field_map[field]
