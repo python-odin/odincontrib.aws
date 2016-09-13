@@ -98,7 +98,7 @@ class Table(ResourceBase):
         key_fields = cls._meta.key_fields
         if len(key_values) != len(key_fields):
             raise KeyError("This table uses a multi part key, `key_value` must be pair of values in a tuple.")
-        return {f.name: f.prepare_dynamo(v) for f, v in zip(key_values, key_fields)}
+        return {f.name: f.prepare_dynamo(v) for v, f in zip(key_values, key_fields)}
 
     def to_dynamo_dict(self, fields=None, is_update=False, skip_null_fields=False):
         """
