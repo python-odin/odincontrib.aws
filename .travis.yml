@@ -9,6 +9,7 @@ python:
 branches:
   only:
     - master
+    - development
 
 install:
   - travis_retry pip install -Ur requirements.txt pytest pytest-cov pytest-mock
