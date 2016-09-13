@@ -1,3 +1,4 @@
 boto3
-odin >= 0.9
+# odin >= 0.9
+https://github.com/python-odin/odin/archive/development.zip
 six
