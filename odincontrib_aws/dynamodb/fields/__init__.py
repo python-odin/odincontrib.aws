@@ -47,7 +47,7 @@ class DynamoField(fields.Field):
             return {self.type_descriptor: value}
 
     @classmethod
-    def format(cls, value, **kwargs):
+    def format_value(cls, value, **kwargs):
         return cls(**kwargs).prepare_dynamo(value)
 
 
