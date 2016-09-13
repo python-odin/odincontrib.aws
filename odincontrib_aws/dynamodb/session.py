@@ -189,7 +189,7 @@ class Session(object):
             if (idx % batch_counter_step) == 0:
                 logger.info("Loading batch: %s", idx)
 
-            client.batch_write_item(RequestItems=batch)
+            result = client.batch_write_item(RequestItems=batch)
 
         logger.info("Loaded %s records in %s batches.", item_count, idx + 1)
 
@@ -203,7 +203,7 @@ class Session(object):
 
         :param item: Table instance to update in Dynamo.
         :param fields: Optional list of fields to update.
-        :param kwargs:
+        :param kwargs: Additional parameters (defined by Boto3 ``client.update_item``).
 
         """
         meta = getmeta(item)
@@ -222,9 +222,54 @@ class Session(object):
             if extra_fields:
                 fields.extend(extra_fields)
 
+        return_values = kwargs.setdefault('ReturnValues', 'NONE')
+
         # Attributes
         kwargs['AttributeUpdates'] = item.to_dynamo_dict(fields, is_update=True)
-        return self.client.update_item(**kwargs)
+
+        try:
+            result = self.client.update_item(**kwargs)
+        except ClientError as ex:
+            # TODO: Error handling for common errors
+            raise
+
+        if return_values != 'NONE':
+            # Return a new item with the changes
+            # TODO: For "New" changes update the existing item
+            return create_resource_from_dict(result.get('Attributes'), item, copy_dict=False, full_clean=False)
+
+    def get_update_item(self, table, key_value, **kwargs):
+        """
+        Get an item using update. This allows for update expressions to be used to apply changes to
+        an entry before fetching it. Eg updating a last accessed date, or incrementing a counter.
+
+        By defult the ``ReturnValues`` parameter is set to 'ALL_NEW'.
+
+        :param table: Table to delete; either type or instance.
+        :param key_value: Either a key value, or key pair (tuple(HASH, RANGE)).
+        :param kwargs: Additional parameters (defined by Boto3 ``client.update_item``).
+        :return: Instance of this resource; or None if not found
+
+        """
+        meta = getmeta(table)
+        kwargs['TableName'] = meta.table_name(self)
+        kwargs['Key'] = table.format_key(key_value)
+        kwargs['ReturnValues'] = 'ALL_NEW'
+
+        # TODO: Identify any field references in expressions and populate ExpressionAttributeNames
+
+        try:
+            result = self.client.update_item(**kwargs)
+        except ClientError as ex:
+            # ConditionalCheckFailedException is raised if an item is not found
+            # and an ConditionExpression is defined.
+            if ex.response['Error']['Code'] == u'ConditionalCheckFailedException':
+                return
+            raise
+
+        row = result.get('Attributes')
+        if row:
+            return create_resource_from_dict(row, table, copy_dict=False, full_clean=False)
 
     def get_item(self, table, key_value, **kwargs):
         """
@@ -240,7 +285,12 @@ class Session(object):
         kwargs['Key'] = table.format_key(key_value)
 
         # Get item from client
-        result = self.client.get_item(**kwargs)
+        try:
+            result = self.client.get_item(**kwargs)
+        except ClientError as ex:
+            # TODO: Error handling for common errors
+            raise
+
         row = result.get('Item')
         if row:
             return create_resource_from_dict(row, table, copy_dict=False, full_clean=False)
