@@ -48,7 +48,8 @@ class TestSession(object):
             Key={'isbn': {'S': "0-345-39180-2"}},
             AttributeUpdates={
                 'title': {'Action': 'PUT', 'Value': {'S': "The Hitchhiker's Guide to the Galaxy"}},
-            }
+            },
+            ReturnValues='NONE',
         )
 
     def test_update_item__fields_in_tuple(self, mocker):
@@ -65,7 +66,8 @@ class TestSession(object):
             AttributeUpdates={
                 'title': {'Action': 'PUT', 'Value': {'S': "The Hitchhiker's Guide to the Galaxy"}},
                 'num_pages': {'Action': 'PUT', 'Value': {'N': '224'}},
-            }
+            },
+            ReturnValues='NONE',
         )
 
     def test_update_item__fields_in_list(self, mocker):
@@ -82,5 +84,6 @@ class TestSession(object):
             AttributeUpdates={
                 'title': {'Action': 'PUT', 'Value': {'S': "The Hitchhiker's Guide to the Galaxy"}},
                 'num_pages': {'Action': 'PUT', 'Value': {'N': '224'}},
-            }
+            },
+            ReturnValues='NONE',
         )
