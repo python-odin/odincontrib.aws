@@ -1,4 +1,6 @@
 from odin.utils import getmeta
+from odincontrib_aws.dynamodb import Session
+
 from .tables import Book
 
 
@@ -15,7 +17,8 @@ book = Book(
 )
 
 
-class TestTable(object):
+class TestSession(object):
+    # TODO: move to table Options
     def test_format_table_name__with_prefix(self):
         client = MockClient()
         client.prefix = 'eek'
@@ -24,6 +27,7 @@ class TestTable(object):
 
         assert actual == "eek-library.Book"
 
+    # TODO: move to table Options
     def test_format_table_name__without_prefix(self):
         client = MockClient()
 
@@ -31,16 +35,15 @@ class TestTable(object):
 
         assert actual == "library.Book"
 
-    def test_update__single_field(self, mocker):
+    def test_update_item__single_field(self, mocker):
         """
         Handling of a single field passed to update.
         """
-        client = mocker.Mock()
-        client.prefix = None
+        session = Session(mocker.Mock())
 
-        book.update(client, 'title')
+        session.update_item(book, 'title')
 
-        client.update_item.assert_called_once_with(
+        session.client.update_item.assert_called_once_with(
             TableName='library.Book',
             Key={'isbn': {'S': "0-345-39180-2"}},
             AttributeUpdates={
@@ -48,16 +51,15 @@ class TestTable(object):
             }
         )
 
-    def test_update__fields_in_tuple(self, mocker):
+    def test_update_item__fields_in_tuple(self, mocker):
         """
         Handling of a tuple of fields passed to update.
         """
-        client = mocker.Mock()
-        client.prefix = None
+        session = Session(mocker.Mock())
 
-        book.update(client, ('title', 'num_pages'))
+        session.update_item(book, ('title', 'num_pages'))
 
-        client.update_item.assert_called_once_with(
+        session.client.update_item.assert_called_once_with(
             TableName='library.Book',
             Key={'isbn': {'S': "0-345-39180-2"}},
             AttributeUpdates={
@@ -66,16 +68,15 @@ class TestTable(object):
             }
         )
 
-    def test_update__fields_in_list(self, mocker):
+    def test_update_item__fields_in_list(self, mocker):
         """
         Handling of a list of fields passed to update.
         """
-        client = mocker.Mock()
-        client.prefix = None
+        session = Session(mocker.Mock())
 
-        book.update(client, ['title', 'num_pages'])
+        session.update_item(book, ['title', 'num_pages'])
 
-        client.update_item.assert_called_once_with(
+        session.client.update_item.assert_called_once_with(
             TableName='library.Book',
             Key={'isbn': {'S': "0-345-39180-2"}},
             AttributeUpdates={
