@@ -1,3 +1,4 @@
+from odin.utils import getmeta
 from .tables import Book
 
 
@@ -19,14 +20,14 @@ class TestTable(object):
         client = MockClient()
         client.prefix = 'eek'
 
-        actual = Book.format_table_name(client)
+        actual = getmeta(Book).table_name(client)
 
         assert actual == "eek-library.Book"
 
     def test_format_table_name__without_prefix(self):
         client = MockClient()
 
-        actual = Book.format_table_name(client)
+        actual = getmeta(Book).table_name(client)
 
         assert actual == "library.Book"
 
