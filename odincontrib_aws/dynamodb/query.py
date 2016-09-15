@@ -230,8 +230,12 @@ class Query(QueryBase):
         # Define Key conditions
         key_fields = getmeta(self.table).key_fields
         key_values = (self.hash_value, self._range_value)
+        # TODO: Switch to KeyConditionExpression
         params['KeyConditions'] = {
-            f.name: {'AttributeValueList': [f.prepare_dynamo(v)]}
+            f.name: {
+                'AttributeValueList': [f.prepare_dynamo(v)],
+                'ComparisonOperator': 'EQ'
+            }
             for f, v in zip(key_fields, key_values) if v is not NOT_PROVIDED
         }
 
