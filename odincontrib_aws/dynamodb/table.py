@@ -100,7 +100,7 @@ class Table(ResourceBase):
             raise KeyError("This table uses a multi part key, `key_value` must be pair of values in a tuple.")
         return {f.name: f.prepare_dynamo(v) for v, f in zip(key_values, key_fields)}
 
-    def to_dynamo_dict(self, fields=None, is_update=False, skip_null_fields=False):
+    def to_dynamo_dict(self, fields=None, is_update=False, skip_null_fields=True):
         """
         Convert this resource into a "dynamo" `dict` of field_name, type/value
         pairs.
