@@ -11,7 +11,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 setup(
     name='odincontrib.aws',
 
-    version='0.1.3',
+    version='0.1.4',
 
     description='Odin integration with AWS',
     long_description=long_description,
