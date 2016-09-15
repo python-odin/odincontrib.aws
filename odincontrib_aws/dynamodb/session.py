@@ -4,6 +4,7 @@ import boto3
 import logging
 
 from botocore.exceptions import ClientError
+from odin.fields import NOT_PROVIDED
 from odin.resources import create_resource_from_dict
 from odin.utils import getmeta, chunk
 
@@ -305,7 +306,7 @@ class Session(object):
         """
         return Scan(self, table_of_index)
 
-    def query(self, table_of_index, hash_value):
+    def query(self, table_of_index, hash_value, range_value=NOT_PROVIDED):
         """
         Perform a query operation on table
 
@@ -314,4 +315,4 @@ class Session(object):
         :return: Query instance
 
         """
-        return Query(hash_value, self, table_of_index)
+        return Query(hash_value, range_value, self, table_of_index)

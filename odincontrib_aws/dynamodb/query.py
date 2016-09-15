@@ -3,6 +3,7 @@ import logging
 from odin.fields import NOT_PROVIDED
 from odin.resources import create_resource_from_dict
 from odin.utils import getmeta
+from odin.compatibility import deprecated
 
 from odincontrib_aws.dynamodb.indexes import Index
 
@@ -217,10 +218,10 @@ class Query(QueryBase):
     """
     perform a query operation against a table.
     """
-    def __init__(self, hash_value, *args):
+    def __init__(self, hash_value, range_value, *args):
         super(Query, self).__init__(*args)
         self.hash_value = hash_value
-        self._range_value = NOT_PROVIDED
+        self.range_value = range_value
 
         self.command = self.session.client.query
 
@@ -228,8 +229,12 @@ class Query(QueryBase):
         params = super(Query, self).get_params()
 
         # Define Key conditions
-        key_fields = getmeta(self.table).key_fields
-        key_values = (self.hash_value, self._range_value)
+        if self.index:
+            key_fields = self.index.key_fields
+        else:
+            key_fields = getmeta(self.table).key_fields
+        key_values = (self.hash_value, self.range_value)
+
         # TODO: Switch to KeyConditionExpression
         params['KeyConditions'] = {
             f.name: {
@@ -241,9 +246,10 @@ class Query(QueryBase):
 
         return params
 
+    @deprecated("Use the range_value provided by the session.query function")
     def range(self, value):
         """
         Specify the range value.
         """
-        self._range_value = value
+        self.range_value = value
         return self
