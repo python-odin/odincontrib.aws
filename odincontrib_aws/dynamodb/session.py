@@ -2,13 +2,14 @@ from collections import defaultdict
 
 import boto3
 import logging
+import time
 
 from botocore.exceptions import ClientError
 from odin.fields import NOT_PROVIDED
 from odin.resources import create_resource_from_dict
 from odin.utils import getmeta, chunk
 
-from odincontrib_aws.dynamodb.exceptions import TableAlreadyExists
+from odincontrib_aws.dynamodb.exceptions import TableAlreadyExists, BatchLoadRetryLimitReached
 from odincontrib_aws.dynamodb.query import Scan, Query
 
 logger = logging.getLogger('odincontrib_aws.dynamodb.session')
@@ -165,22 +166,24 @@ class Session(object):
     # Alias put
     save_item = put_item
 
-    def batch_write_item(self, items, batch_size=MAX_DYNAMO_BATCH_SIZE, batch_counter_step = MAX_DYNAMO_BATCH_SIZE):
+    def batch_write_item(self, items, batch_size=MAX_DYNAMO_BATCH_SIZE, batch_counter_step=MAX_DYNAMO_BATCH_SIZE,
+                         backoff_time=5, retry_limit=5):
         """
         Batch write a number of items into DynamoDB
 
         :param items: Iterable of resources (this can be different tables).
         :param batch_size: Size of each batch.
         :param batch_counter_step: Number of batches loaded between each counter message.
+        :param backoff_time: Time to delay before trying again
+        :parma retry_limit: Number of retry attempts before giving up.
 
         """
         idx = 0
         item_count = 0
 
         client = self.client
-        batch = defaultdict(list)
         for idx, batch_resources in enumerate(chunk(items, batch_size)):
-            batch.clear()
+            batch = defaultdict(list)
             for resource in batch_resources:
                 batch[getmeta(resource).table_name(self)].append(
                     {'PutRequest': {'Item': resource.to_dynamo_dict(skip_null_fields=True)}}
@@ -190,7 +193,23 @@ class Session(object):
             if (idx % batch_counter_step) == 0:
                 logger.info("Loading batch: %s", idx)
 
-            result = client.batch_write_item(RequestItems=batch)
+            retry = 0
+            while batch:
+                result = client.batch_write_item(RequestItems=batch)
+                unprocessed = result.get('UnprocessedItems')
+                if unprocessed:
+                    retry += 1
+                    if retry > retry_limit:
+                        raise BatchLoadRetryLimitReached()
+
+                    # Assign the un-processed items to the next batch
+                    batch = unprocessed
+
+                    logger.warning("Returned %s unproccessed items, waiting %s seconds. Retry %s of %s.",
+                                   len(batch), backoff_time, retry, retry_limit)
+                    time.sleep(backoff_time)
+                else:
+                    batch = None
 
         logger.info("Loaded %s records in %s batches.", item_count, idx + 1)
 
