@@ -204,6 +204,19 @@ class QueryBase(object):
         self.params['ReturnConsumedCapacity'] = value
         return self
 
+    def consistent(self, value=True):
+        """
+        Determines the read consistency model: If set to *true*, then the
+        operation uses strongly consistent reads; otherwise, the operation
+        uses eventually consistent reads.
+
+        Strongly consistent reads are not supported on global secondary
+        indexes. If you query a global secondary index with ConsistentRead set
+        to *true*, you will receive a ValidationException.
+        """
+        self.params['ConsistentRead'] = value
+        return self
+
 
 class Scan(QueryBase):
     """
