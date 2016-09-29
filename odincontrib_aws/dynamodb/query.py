@@ -1,5 +1,6 @@
 import logging
 
+from odin import bases
 from odin.fields import NOT_PROVIDED
 from odin.resources import create_resource_from_dict
 from odin.utils import getmeta
@@ -90,7 +91,7 @@ class PagedQueryResult(object):
                 params['ExclusiveStartKey'] = results.last_evaluated_key
 
 
-class QueryBase(object):
+class QueryBase(bases.TypedResourceIterable):
     """
     Base of Query objects
     """
@@ -103,6 +104,8 @@ class QueryBase(object):
         else:
             self.table = table_of_index
             self.index = None
+
+        super(QueryBase, self).__init__(self.table)
 
         self._expression_attributes = {}
         self.params = {}
@@ -138,12 +141,6 @@ class QueryBase(object):
         Execute operation and return result object
         """
         return PagedQueryResult(self)
-
-    def params(self, **params):
-        """
-        Apply params that you would execute.
-        """
-        self.params.update(params)
 
     def limit(self, value):
         """
