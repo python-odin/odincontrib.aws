@@ -222,6 +222,7 @@ class Session(object):
         included in the update list.
 
         :param item: Table instance to update in Dynamo.
+        :type item: odincontrib_aws.dynamodb.Table
         :param fields: Optional list of fields to update.
         :param kwargs: Additional parameters (defined by Boto3 ``client.update_item``).
 
@@ -265,7 +266,8 @@ class Session(object):
 
         By defult the ``ReturnValues`` parameter is set to 'ALL_NEW'.
 
-        :param table: Table to delete; either type or instance.
+        :param table: Table to get/update item from.
+        :type table: odincontrib_aws.dynamodb.Table
         :param key_value: Either a key value, or key pair (tuple(HASH, RANGE)).
         :param kwargs: Additional parameters (defined by Boto3 ``client.update_item``).
         :return: Instance of this resource; or None if not found
@@ -295,7 +297,8 @@ class Session(object):
         """
         Get an item from DynamoDB
 
-        :param table: Table to delete; either type or instance.
+        :param table: Table to get item from.
+        :type table: odincontrib_aws.dynamodb.Table
         :param key_value: Either a key value, or key pair (tuple(HASH, RANGE)).
         :param kwargs: Additional parameters (defined by Boto3 ``client.get_item``).
         :return: Instance of this resource; or None if not found
@@ -320,6 +323,7 @@ class Session(object):
         Perform a scan operation on a table
 
         :param table_of_index: Table or Index to scan; either type or instance.
+        :type table_of_index: odincontrib_aws.dynamodb.Table | odincontrib_aws.dynamodb.Index
         :return: Scan instance
 
         """
@@ -330,6 +334,7 @@ class Session(object):
         Perform a query operation on table
 
         :param table_of_index: Table or Index to query; either type or instance.
+        :type table_of_index: odincontrib_aws.dynamodb.Table | odincontrib_aws.dynamodb.Index
         :param hash_value: Value for the hash key.
         :return: Query instance
 
