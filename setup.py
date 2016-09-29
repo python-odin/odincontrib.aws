@@ -49,5 +49,5 @@ setup(
 
     packages=find_packages(include=('odincontrib_aws*',)),
 
-    install_requires=['odin>=0.9b1', 'six'],
+    install_requires=['odin>=0.10b8', 'six'],
 )
