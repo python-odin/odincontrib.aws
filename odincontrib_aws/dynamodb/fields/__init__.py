@@ -8,10 +8,12 @@ addition the :py:meth`odin.Resource.to_python` method has been customised to
 parse results in DynamoDB typed JSON.
 
 """
+from odin import exceptions
 from odin import fields
 from odin.serializers import datetime_iso_format, date_iso_format, time_iso_format
 
 __all__ = ('StringField', 'IntegerField', 'FloatField', 'BooleanField',
+           'StringSetField',
            'DateField', 'DateTimeField', 'NaiveDateTimeField')
 
 
@@ -87,6 +89,95 @@ class BooleanField(DynamoField, fields.BooleanField):
     """
     type_descriptor = 'BOOL'
 
+
+SET_TYPES = {'SS', 'NS', 'BS'}
+
+
+class DynamoSetField(fields.Field):
+    type_descriptor = None
+
+    def to_python(self, value):
+        """
+        Process a value that may include a Dynamo DB type descriptor.
+
+        :param value: Value to process.
+        :return: Python version of the specified type.
+
+        """
+        if value is None:
+            return
+
+        if isinstance(value, dict):
+            if len(value) == 1:
+                key, value = list(value.items())[0]
+                if key == 'NULL':
+                    return
+
+        if isinstance(value, (set, list, tuple)):
+            value_set = set()
+            errors = {}
+            for idx, item in enumerate(value):
+                try:
+                    value_set.add(super(DynamoSetField, self).to_python(item))
+                except exceptions.ValidationError as ve:
+                    errors[idx] = ve.error_messages
+
+            if errors:
+                raise exceptions.ValidationError(errors)
+
+            return value_set
+
+        else:
+            msg = self.error_messages['invalid']
+            raise exceptions.ValidationError(msg)
+
+    def prepare(self, value):
+        if isinstance(value, (set, list, tuple)):
+            prepare = super(DynamoSetField, self).prepare
+            return {prepare(i) for i in value}
+        return value
+
+    def prepare_dynamo(self, value):
+        """
+        Prepare value for dynamo and wrap with a type descriptor
+
+        :param value:
+
+        """
+        value = self.prepare(value)
+        if value is None:
+            return {'NULL': True}
+        else:
+            return {self.type_descriptor: value}
+
+    @classmethod
+    def format_value(cls, value, **kwargs):
+        return cls(**kwargs).prepare_dynamo(value)
+
+
+class StringSetField(DynamoSetField, fields.StringField):
+    """
+    String set field
+    """
+    type_descriptor = 'SS'
+
+
+class IntegerSetField(DynamoSetField, fields.IntegerField):
+    """
+    Integer set field
+    """
+    type_descriptor = 'NS'
+
+
+class FloatSetField(DynamoSetField, fields.FloatField):
+    """
+    Float set field
+    """
+    type_descriptor = 'NS'
+
+
+####################################################################
+# Extended fields
 
 class DateField(DynamoField, fields.DateField):
     """
