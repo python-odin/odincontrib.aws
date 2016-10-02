@@ -211,7 +211,7 @@ class Session(object):
         kwargs['Key'] = item.to_dynamo_dict(meta.key_fields)
 
         if fields is None:
-            fields = meta.fields
+            fields = list(meta.fields)
         elif isinstance(fields, tuple):
             fields = list(fields)
         elif not isinstance(fields, list):
@@ -225,7 +225,8 @@ class Session(object):
         return_values = kwargs.setdefault('ReturnValues', 'NONE')
 
         # Attributes
-        kwargs['AttributeUpdates'] = item.to_dynamo_dict(fields, is_update=True)
+        if fields:
+            kwargs['AttributeUpdates'] = item.to_dynamo_dict(fields, is_update=True)
 
         try:
             result = self.client.update_item(**kwargs)
