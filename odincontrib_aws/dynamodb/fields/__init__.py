@@ -96,6 +96,20 @@ SET_TYPES = {'SS', 'NS', 'BS'}
 class DynamoSetField(fields.Field):
     type_descriptor = None
 
+    def __iter__(self):
+        """
+        This does nothing however it will prevent false positive warnings from
+        IDEs and static inspection tools.
+        """
+        pass
+
+    def __len__(self):
+        """
+        This does nothing however it will prevent false positive warnings from
+        IDEs and static inspection tools.
+        """
+        pass
+
     def to_python(self, value):
         """
         Process a value that may include a Dynamo DB type descriptor.
