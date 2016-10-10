@@ -117,7 +117,7 @@ class Table(ResourceBase):
             # Ensure fields have been resolved
             fields = (f for f in field_smart_iter(fields, self))
         else:
-            fields = self._meta.fields
+            fields = self._meta.all_fields
         if is_update:
             # Return with the Value/Action block
             return {f.name: {"Value": v, "Action": "PUT"}

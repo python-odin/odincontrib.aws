@@ -168,42 +168,21 @@ class NaiveDateTimeField(DynamoField, fields.NaiveDateTimeField):
         return value
 
 
-class MultipartKeyField(fields.Field):
+class MultipartKeyField(fields.virtual.MultiPartField):
     """
     A field whose value is the combination of several other fields.
-
-    This field should be included after the field that make up the multipart value.
     """
     type_descriptor = 'S'
     data_type_name = "String"
 
-    def __init__(self, field_names, separator=':', verbose_name=None, verbose_name_plural=None, name=None, doc_text='', key=True):
-        super(MultipartKeyField, self).__init__(verbose_name, verbose_name_plural, name, doc_text=doc_text, key=key)
-        self.field_names = force_tuple(field_names)
-        self.separator = separator
-        self._fields = None
-
-    def __get__(self, instance, owner):
-        values = [f.prepare(f.value_from_object(instance)) for f in self._fields]
-        return self.separator.join(str(v) for v in values)
+    def __init__(self, field_names, separator=':', **kwargs):
+        super(MultipartKeyField, self).__init__(field_names, separator, **kwargs)
 
     def prepare_dynamo(self, value):
         """
         Prepare value for dynamo and wrap with a type descriptor
         """
         return {'S': value}
-
-    def contribute_to_class(self, cls, name):
-        super(MultipartKeyField, self).contribute_to_class(cls, name)
-        setattr(cls, name, self)
-
-    def on_resource_ready(self):
-        # Extract reference to fields
-        meta = getmeta(self.resource)
-        try:
-            self._fields = tuple(meta.field_map[name] for name in self.field_names)
-        except KeyError as ex:
-            raise AttributeError("Attribute {0} not found on {0!r}".format(ex, self.resource))
 
     @classmethod
     def format_value(cls, values, separator=':'):
