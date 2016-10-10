@@ -54,6 +54,10 @@ class TableOptions(ResourceOptions):
         return self.resource_name
 
     @cached_property
+    def all_field_map(self):
+        return dict((f.attname, f) for f in self.all_fields)
+
+    @cached_property
     def hash_field(self):
         key_fields = self.key_fields
         if key_fields:
