@@ -1,4 +1,4 @@
-from odin.utils import getmeta
+from odin.utils import getmeta, cached_property
 
 __all__ = ('LocalIndex', 'GlobalIndex', 'PROJECTION_ALL', 'PROJECTION_INCLUDE', 'PROJECTION_KEYS_ONLY')
 
@@ -35,14 +35,14 @@ class Index(object):
         getmeta(cls).add_index(self)
         setattr(cls, name, self)
 
-    @property
+    @cached_property
     def hash_field(self):
-        return getmeta(self.table).field_map[self.hash_key]
+        return getmeta(self.table).all_field_map[self.hash_key]
 
     @property
     def range_field(self):
         if self.range_key:
-            return getmeta(self.table).field_map[self.range_key]
+            return getmeta(self.table).all_field_map[self.range_key]
 
     @property
     def key_fields(self):
@@ -56,7 +56,7 @@ class Index(object):
         """
         Used by `include` projection, returns all non-key fields that have been specified.
         """
-        includes = self.includes or getmeta(self.table).field_map
+        includes = self.includes or getmeta(self.table).all_field_map
         excludes = self.excludes or []
         return [
             field for field in getmeta(self.table).fields
