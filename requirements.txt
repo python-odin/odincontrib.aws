@@ -1,4 +1,4 @@
 boto3
-# odin>=0.10b8
-https://github.com/python-odin/odin/archive/v0.10b8.zip
+# odin>=0.10b9
+https://github.com/python-odin/odin/archive/v0.10b9.zip
 six
