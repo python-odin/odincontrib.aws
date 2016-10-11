@@ -117,18 +117,21 @@ class Table(ResourceBase):
             these codecs then operate recursively on the returned `dict`.
 
         """
+        required_field_names = None
         if fields:
             # Ensure fields have been resolved
             fields = (f for f in field_smart_iter(fields, self))
         else:
             fields = self._meta.all_fields
+            required_field_names = [f.name for f in self._meta.key_fields]
         if is_update:
             # Return with the Value/Action block
             return {f.name: {"Value": v, "Action": "PUT"}
-                    for f, v in domino_field_iter_items(self, fields, skip_null_fields)}
+                    for f, v in domino_field_iter_items(self, fields, None, skip_null_fields)}
         else:
-            return {f.name: v for f, v in domino_field_iter_items(self, fields, skip_null_fields)}
-
+            return {
+                f.name: v for f, v in domino_field_iter_items(self, fields, required_field_names, skip_null_fields)
+            }
 
 # Register tables as mappable by a standard resource field resolver
 registration.register_field_resolver(ResourceFieldResolver, Table)
