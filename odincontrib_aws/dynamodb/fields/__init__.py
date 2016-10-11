@@ -8,11 +8,11 @@ addition the :py:meth`odin.Resource.to_python` method has been customised to
 parse results in DynamoDB typed JSON.
 
 """
-from boto3.dynamodb import types
 from odin import fields
 from odin.fields import virtual
 from odin.mapping import force_tuple
 from odin.serializers import datetime_iso_format, date_iso_format, time_iso_format
+from odincontrib_aws.dynamodb import types
 
 __all__ = ('StringField', 'IntegerField', 'FloatField', 'BooleanField',
            'DateField', 'DateTimeField', 'NaiveDateTimeField',
@@ -20,7 +20,7 @@ __all__ = ('StringField', 'IntegerField', 'FloatField', 'BooleanField',
 
 
 class DynamoField(fields.Field):
-    type_descriptor = None
+    dynamo_type = None
 
     def to_python(self, value):
         """
@@ -45,25 +45,22 @@ class DynamoField(fields.Field):
 
         """
         value = self.prepare(value)
-        if value is None:
-            return {types.NULL: True}
-        else:
-            return {self.type_descriptor: value}
+        return self.dynamo_type(value)
 
     @classmethod
     def format_value(cls, value, **kwargs):
-        return cls(**kwargs).prepare_dynamo(value)
+        return cls.dynamo_type(value)
 
 
 class StringField(DynamoField, fields.StringField):
     """
     String field, utilises the `S` (string) type descriptor.
     """
-    type_descriptor = types.STRING
+    dynamo_type = types.String
 
 
 class NumericField(DynamoField):
-    type_descriptor = types.NUMBER
+    dynamo_type = types.Number
 
     def prepare_dynamo(self, value):
         if value is not None:
@@ -89,7 +86,7 @@ class BooleanField(DynamoField, fields.BooleanField):
     """
     Boolean field, utilises the `BOOL` type descriptor
     """
-    type_descriptor = types.BOOLEAN
+    dynamo_type = types.Boolean
 
 
 class DateField(DynamoField, fields.DateField):
@@ -97,7 +94,7 @@ class DateField(DynamoField, fields.DateField):
     Date field that represents a date in an ISO8601 date string.
     Utilises the `S` (string) type descriptor.
     """
-    type_descriptor = types.STRING
+    dynamo_type = types.String
 
     def prepare(self, value):
         if value:
@@ -110,7 +107,7 @@ class TimeField(DynamoField, fields.TimeField):
     Time field that represents a time as an ISO8601 time string.
     Utilises the `S` (string) type descriptor.
     """
-    type_descriptor = types.STRING
+    dynamo_type = types.String
 
     def prepare(self, value):
         if value:
@@ -123,7 +120,7 @@ class DateTimeField(DynamoField, fields.DateTimeField):
     Date time field that represents a date/time in a ISO8601 date string.
     Utilises the `S` (string) type descriptor.
     """
-    type_descriptor = types.STRING
+    dynamo_type = types.String
 
     def prepare(self, value):
         if value:
@@ -140,7 +137,7 @@ class NaiveTimeField(DynamoField, fields.NaiveTimeField):
     the timezone, a timezone will not be applied if one is not specified.
 
     """
-    type_descriptor = types.STRING
+    dynamo_type = types.String
 
     def prepare(self, value):
         value = super(NaiveTimeField, self).prepare(value)
@@ -159,7 +156,7 @@ class NaiveDateTimeField(DynamoField, fields.NaiveDateTimeField):
     specified.
 
     """
-    type_descriptor = types.STRING
+    dynamo_type = types.String
 
     def prepare(self, value):
         value = super(NaiveDateTimeField, self).prepare(value)
@@ -172,7 +169,7 @@ class MultipartKeyField(fields.virtual.MultiPartField):
     """
     A field whose value is the combination of several other fields.
     """
-    type_descriptor = types.STRING
+    dynamo_type = types.String
     data_type_name = "String"
 
     def __init__(self, field_names, separator=':', **kwargs):
@@ -182,10 +179,10 @@ class MultipartKeyField(fields.virtual.MultiPartField):
         """
         Prepare value for dynamo and wrap with a type descriptor
         """
-        return {self.type_descriptor: value}
+        return self.dynamo_type(value)
 
     @classmethod
     def format_value(cls, values, separator=':'):
         values = force_tuple(values)
         value = separator.join(str(v) for v in values)
-        return {cls.type_descriptor: value}
+        return cls.dynamo_type(value)
