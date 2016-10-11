@@ -8,11 +8,11 @@ addition the :py:meth`odin.Resource.to_python` method has been customised to
 parse results in DynamoDB typed JSON.
 
 """
+from boto3.dynamodb import types
 from odin import fields
 from odin.fields import virtual
 from odin.mapping import force_tuple
 from odin.serializers import datetime_iso_format, date_iso_format, time_iso_format
-from odin.utils import getmeta
 
 __all__ = ('StringField', 'IntegerField', 'FloatField', 'BooleanField',
            'DateField', 'DateTimeField', 'NaiveDateTimeField',
@@ -33,7 +33,7 @@ class DynamoField(fields.Field):
         if isinstance(value, dict):
             if len(value) == 1:
                 key, value = list(value.items())[0]
-                if key == 'NULL':
+                if key == types.NULL:
                     return None
         return super(DynamoField, self).to_python(value)
 
@@ -46,7 +46,7 @@ class DynamoField(fields.Field):
         """
         value = self.prepare(value)
         if value is None:
-            return {'NULL': True}
+            return {types.NULL: True}
         else:
             return {self.type_descriptor: value}
 
@@ -59,11 +59,11 @@ class StringField(DynamoField, fields.StringField):
     """
     String field, utilises the `S` (string) type descriptor.
     """
-    type_descriptor = 'S'
+    type_descriptor = types.STRING
 
 
 class NumericField(DynamoField):
-    type_descriptor = 'N'
+    type_descriptor = types.NUMBER
 
     def prepare_dynamo(self, value):
         if value is not None:
@@ -89,7 +89,7 @@ class BooleanField(DynamoField, fields.BooleanField):
     """
     Boolean field, utilises the `BOOL` type descriptor
     """
-    type_descriptor = 'BOOL'
+    type_descriptor = types.BOOLEAN
 
 
 class DateField(DynamoField, fields.DateField):
@@ -97,7 +97,7 @@ class DateField(DynamoField, fields.DateField):
     Date field that represents a date in an ISO8601 date string.
     Utilises the `S` (string) type descriptor.
     """
-    type_descriptor = 'S'
+    type_descriptor = types.STRING
 
     def prepare(self, value):
         if value:
@@ -110,7 +110,7 @@ class TimeField(DynamoField, fields.TimeField):
     Time field that represents a time as an ISO8601 time string.
     Utilises the `S` (string) type descriptor.
     """
-    type_descriptor = 'S'
+    type_descriptor = types.STRING
 
     def prepare(self, value):
         if value:
@@ -123,7 +123,7 @@ class DateTimeField(DynamoField, fields.DateTimeField):
     Date time field that represents a date/time in a ISO8601 date string.
     Utilises the `S` (string) type descriptor.
     """
-    type_descriptor = 'S'
+    type_descriptor = types.STRING
 
     def prepare(self, value):
         if value:
@@ -140,7 +140,7 @@ class NaiveTimeField(DynamoField, fields.NaiveTimeField):
     the timezone, a timezone will not be applied if one is not specified.
 
     """
-    type_descriptor = 'S'
+    type_descriptor = types.STRING
 
     def prepare(self, value):
         value = super(NaiveTimeField, self).prepare(value)
@@ -159,7 +159,7 @@ class NaiveDateTimeField(DynamoField, fields.NaiveDateTimeField):
     specified.
 
     """
-    type_descriptor = 'S'
+    type_descriptor = types.STRING
 
     def prepare(self, value):
         value = super(NaiveDateTimeField, self).prepare(value)
@@ -172,7 +172,7 @@ class MultipartKeyField(fields.virtual.MultiPartField):
     """
     A field whose value is the combination of several other fields.
     """
-    type_descriptor = 'S'
+    type_descriptor = types.STRING
     data_type_name = "String"
 
     def __init__(self, field_names, separator=':', **kwargs):
@@ -182,10 +182,10 @@ class MultipartKeyField(fields.virtual.MultiPartField):
         """
         Prepare value for dynamo and wrap with a type descriptor
         """
-        return {'S': value}
+        return {self.type_descriptor: value}
 
     @classmethod
     def format_value(cls, values, separator=':'):
         values = force_tuple(values)
         value = separator.join(str(v) for v in values)
-        return {'S': value}
+        return {cls.type_descriptor: value}
