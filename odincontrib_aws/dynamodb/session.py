@@ -205,7 +205,7 @@ class Session(object):
                     # Assign the un-processed items to the next batch
                     batch = unprocessed
 
-                    logger.warning("Returned %s unproccessed items, waiting %s seconds. Retry %s of %s.",
+                    logger.warning("Returned %s unprocessed items, waiting %s seconds. Retry %s of %s.",
                                    len(batch), backoff_time, retry, retry_limit)
                     time.sleep(backoff_time)
                 else:
