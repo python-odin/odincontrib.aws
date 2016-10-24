@@ -17,6 +17,7 @@ from odincontrib_aws.dynamodb import types
 
 __all__ = ('StringField', 'IntegerField', 'FloatField', 'BooleanField',
            'StringSetField', 'IntegerSetField', 'FloatSetField',
+           'ListField',
            'DateField', 'DateTimeField', 'NaiveDateTimeField',
            'MultipartKeyField')
 
@@ -91,11 +92,8 @@ class BooleanField(DynamoField, fields.BooleanField):
     dynamo_type = types.Boolean
 
 
-SET_TYPES = {'SS', 'NS', 'BS'}
-
-
 class DynamoSetField(fields.Field):
-    type_descriptor = None
+    dynamo_type = None
 
     def __iter__(self):
         """
@@ -160,10 +158,7 @@ class DynamoSetField(fields.Field):
 
         """
         value = self.prepare(value)
-        if value is None:
-            return {'NULL': True}
-        else:
-            return {self.type_descriptor: list(value)}
+        return self.dynamo_type(value)
 
     @classmethod
     def format_value(cls, value, **kwargs):
@@ -174,21 +169,35 @@ class StringSetField(DynamoSetField, fields.StringField):
     """
     String set field
     """
-    type_descriptor = 'SS'
+    dynamo_type = types.StringSet
 
 
 class IntegerSetField(DynamoSetField, fields.IntegerField):
     """
     Integer set field
     """
-    type_descriptor = 'NS'
+    dynamo_type = types.IntegerSet
 
 
 class FloatSetField(DynamoSetField, fields.FloatField):
     """
     Float set field
     """
-    type_descriptor = 'NS'
+    dynamo_type = types.FloatSet
+
+
+class ListField(DynamoField, fields.TypedListField):
+    """
+    List field
+    """
+    dynamo_type = types.List
+
+    def prepare_dynamo(self, value):
+        if isinstance(value, (tuple, list)):
+            prepare = self.field.prepare_dynamo
+            value = [prepare(i) for i in value]
+
+        return self.dynamo_type(value)
 
 
 ####################################################################

@@ -6,6 +6,9 @@ __all__ = ('String', 'StringSet', 'Number', 'NumberSet', 'Integer', 'IntegerSet'
 
 
 class DynamoType(dict):
+    """
+    Definition of a Dynamo DB type
+    """
     type_descriptor = None
 
     def __init__(self, value):
