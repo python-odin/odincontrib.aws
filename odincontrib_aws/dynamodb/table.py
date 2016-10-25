@@ -20,7 +20,7 @@ logger = logging.getLogger("odincontrib.aws.dynamodb.table")
 
 class TableOptions(ResourceOptions):
     """
-    Table specifc options
+    Table specific options
     """
     META_OPTION_NAMES = ResourceOptions.META_OPTION_NAMES + (
         'read_capacity', 'write_capacity'
@@ -86,9 +86,22 @@ class TableType(ResourceType):
 class Table(ResourceBase):
     """
     Definition of a DynamoDB Table
+
+    >>> class Book(Table):
+    >>>     class Meta:
+    >>>         # Meta information
+
     """
     class Meta:
         abstract = True
+
+    def __init__(self, *args, **kwargs):
+        super(Table, self).__init__(*args, **kwargs)
+        self._bound_session = None
+
+    @property
+    def is_bound_to_session(self):
+        return self._bound_session is not None
 
     @classmethod
     def format_key(cls, key_values):
@@ -103,6 +116,16 @@ class Table(ResourceBase):
         if len(key_values) != len(key_fields):
             raise KeyError("This table uses a multi part key, `key_value` must be pair of values in a tuple.")
         return {f.name: f.prepare_dynamo(v) for v, f in zip(key_values, key_fields)}
+
+    def bind_to_session(self, session):
+        """
+        Bind this table to a particular session
+
+        :param session: Session to bind to, this can also be `None` to unbind session.
+        :type session: odincontrib_aws.dynamodb.Session | None
+
+        """
+        self._bound_session = session
 
     def to_dynamo_dict(self, fields=None, is_update=False, skip_null_fields=True):
         """
