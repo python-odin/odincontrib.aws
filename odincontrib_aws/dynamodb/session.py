@@ -6,11 +6,11 @@ import time
 
 from botocore.exceptions import ClientError
 from odin.fields import NOT_PROVIDED
-from odin.resources import create_resource_from_dict
 from odin.utils import getmeta, chunk
 
 from odincontrib_aws.dynamodb.exceptions import TableAlreadyExists, BatchLoadRetryLimitReached
 from odincontrib_aws.dynamodb.query import Scan, Query
+from odincontrib_aws.dynamodb.utils import create_bound_table_from_dict
 
 logger = logging.getLogger('odincontrib_aws.dynamodb.session')
 
@@ -258,7 +258,7 @@ class Session(object):
         if return_values != 'NONE':
             # Return a new item with the changes
             # TODO: For "New" changes update the existing item
-            return create_resource_from_dict(result.get('Attributes'), item, copy_dict=False, full_clean=False)
+            return create_bound_table_from_dict(result.get('Attributes'), item, self, full_clean=False)
 
     def get_update_item(self, table, key_value, **kwargs):
         """
@@ -292,7 +292,7 @@ class Session(object):
 
         row = result.get('Attributes')
         if row:
-            return create_resource_from_dict(row, table, copy_dict=False, full_clean=False)
+            return create_bound_table_from_dict(row, table, self, full_clean=False)
 
     def get_item(self, table, key_value, **kwargs):
         """
@@ -317,7 +317,7 @@ class Session(object):
 
         row = result.get('Item')
         if row:
-            return create_resource_from_dict(row, table, copy_dict=False, full_clean=False)
+            return create_bound_table_from_dict(row, table, self, full_clean=False)
 
     def scan(self, table_of_index):
         """

@@ -2,11 +2,11 @@ import logging
 
 from odin import bases
 from odin.fields import NOT_PROVIDED
-from odin.resources import create_resource_from_dict
 from odin.utils import getmeta
 from odin.compatibility import deprecated
 
 from odincontrib_aws.dynamodb.indexes import Index
+from odincontrib_aws.dynamodb.utils import create_bound_table_from_dict
 
 logger = logging.getLogger('odincontrib_aws.dynamodb.query')
 
@@ -24,8 +24,9 @@ class QueryResult(object):
 
     def __iter__(self):
         table = self.query.table
+        session = self.query.session
         for item in self.raw_results:
-            yield create_resource_from_dict(item, table, copy_dict=False, full_clean=False)
+            yield create_bound_table_from_dict(item, table, session, full_clean=False)
 
     @property
     def raw_results(self):
