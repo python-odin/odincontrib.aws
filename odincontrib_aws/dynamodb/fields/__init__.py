@@ -17,7 +17,7 @@ from odincontrib_aws.dynamodb import types
 
 __all__ = ('StringField', 'IntegerField', 'FloatField', 'BooleanField',
            'StringSetField', 'IntegerSetField', 'FloatSetField',
-           'ListField',
+           'ListField', 'MapField',
            'DateField', 'DateTimeField', 'NaiveDateTimeField',
            'MultipartKeyField')
 
@@ -195,7 +195,21 @@ class ListField(DynamoField, fields.TypedListField):
     def prepare_dynamo(self, value):
         if isinstance(value, (tuple, list)):
             prepare = self.field.prepare_dynamo
-            value = [prepare(i) for i in value]
+            value = [prepare(v) for v in value]
+
+        return self.dynamo_type(value)
+
+
+class MapField(DynamoField, fields.TypedDictField):
+    """
+    Map field
+    """
+    dynamo_type = types.Map
+
+    def prepare_dynamo(self, value):
+        if isinstance(value, dict):
+            prepare = self.value_field.prepare_dynamo
+            value = {k: prepare(v) for k, v in value.items()}
 
         return self.dynamo_type(value)
 
