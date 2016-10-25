@@ -15,8 +15,12 @@ class DynamoType(dict):
         if value is None:
             kwargs = {NULL: True}
         else:
-            kwargs = {self.type_descriptor: value}
+            kwargs = {self.type_descriptor: self.prepare_value(value)}
         super(DynamoType, self).__init__(**kwargs)
+
+    @staticmethod
+    def prepare_value(value):
+        return value
 
     def is_empty(self):
         return False
@@ -39,6 +43,11 @@ class StringSet(DynamoType):
 
 class Number(DynamoType):
     type_descriptor = types.NUMBER
+
+    @staticmethod
+    def prepare_value(value):
+        return "{}".format(value)
+
 
 # Aliases of Number
 Integer = Number
