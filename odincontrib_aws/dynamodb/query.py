@@ -170,7 +170,7 @@ class QueryBase(bases.TypedResourceIterable):
         self.params['Limit'] = value
         return self
 
-    def select(self, value='ALL_ATTRIBUTES'):
+    def select(self, value='ALL_ATTRIBUTES', *attributes_to_get):
         """
         The attributes to be returned in the result. You can retrieve all item
         attributes, specific item attributes, or the count of matching items.
@@ -193,8 +193,13 @@ class QueryBase(bases.TypedResourceIterable):
         AttributesToGet without any value for Select.)
         """
         assert value in ('ALL_ATTRIBUTES', 'ALL_PROJECTED_ATTRIBUTES', 'COUNT', 'SPECIFIC_ATTRIBUTES')
+        assert attributes_to_get and value == 'SPECIFIC_ATTRIBUTES', "Attributes to get must only be " \
+                                                                     "specified with SPECIFIC_ATTRIBUTES"
 
         self.params['Select'] = value
+        if value == 'SPECIFIC_ATTRIBUTES':
+            self.params['AttributesToGet'] = attributes_to_get
+
         return self
 
     def consumed_capacity(self, value='TOTAL'):
