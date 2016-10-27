@@ -337,6 +337,7 @@ class Session(object):
         :param table_of_index: Table or Index to query; either type or instance.
         :type table_of_index: odincontrib_aws.dynamodb.Table | odincontrib_aws.dynamodb.Index
         :param hash_value: Value for the hash key.
+        :param range_value: Value for the range key.
         :return: Query instance
 
         """
