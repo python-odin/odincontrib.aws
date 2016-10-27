@@ -128,20 +128,35 @@ class QueryBase(bases.TypedResourceIterable):
         """
         query = self.__class__(self.session, self.table)
         query.params = self.params.copy()
+        query.index = self.index
         return query
 
-    def single(self):
+    def single_page(self):
         """
         Execute operation and return a single page only.
         """
         result = self.command(**self.get_params())
         return QueryResult(self, result)
+    single = single_page
 
     def all(self):
         """
         Execute operation and return result object
         """
         return PagedQueryResult(self)
+
+    def first(self, limit=1):
+        """
+        Execute operation and return the first result
+        """
+        # Copy the query and apply a limit
+        query = self.copy()
+        if limit:
+            query.limit(limit)
+        try:
+            return iter(PagedQueryResult(query)).next()
+        except StopIteration:
+            return None
 
     def limit(self, value):
         """
@@ -235,6 +250,15 @@ class Query(QueryBase):
         self.range_value = range_value
 
         self.command = self.session.client.query
+
+    def copy(self):
+        """
+        Copy the Query.
+        """
+        query = Query(self.hash_value, self.range_value, self.session, self.table)
+        query.index = self.index
+        query.params = self.params.copy()
+        return query
 
     def get_params(self):
         params = super(Query, self).get_params()
