@@ -23,7 +23,7 @@ class TableOptions(ResourceOptions):
     Table specific options
     """
     META_OPTION_NAMES = ResourceOptions.META_OPTION_NAMES + (
-        'read_capacity', 'write_capacity'
+        'table', 'read_capacity', 'write_capacity'
     )
 
     def __init__(self, meta):
@@ -32,6 +32,7 @@ class TableOptions(ResourceOptions):
         self.indexes = defaultdict(list)
         self.read_capacity = 1
         self.write_capacity = 1
+        self.table = None
 
     def add_index(self, index):
         """
@@ -43,15 +44,22 @@ class TableOptions(ResourceOptions):
         if not (0 < len(self.key_fields) < 3):
             raise KeyError("A dynamo table must have either a single HASH key or a HASH/RANGE key pair.")
 
+    @cached_property
+    def _table_name(self):
+        if self.name_space:
+            return '{}.{}'.format(self.name_space, self.table or self.name)
+        else:
+            return self.table or self.name
+
     def table_name(self, session=None):
         """
-        Generate a table name
+        Generate the associated name of the table
         """
         if session:
             prefix = getattr(session, 'prefix', None)
             if prefix:
-                return '{}-{}'.format(prefix, self.resource_name)
-        return self.resource_name
+                return '{}-{}'.format(prefix, self._table_name)
+        return self._table_name
 
     @cached_property
     def all_field_map(self):
