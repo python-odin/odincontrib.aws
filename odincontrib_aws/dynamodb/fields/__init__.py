@@ -22,6 +22,10 @@ __all__ = ('StringField', 'IntegerField', 'FloatField', 'BooleanField',
            'MultipartKeyField')
 
 
+# Item iterator from a dict (try python 2 first then 3)
+dict_item_iter = dict.iteritems if hasattr(dict, 'iteritems') else dict.items
+
+
 class DynamoField(fields.Field):
     dynamo_type = None
 
@@ -35,7 +39,7 @@ class DynamoField(fields.Field):
         """
         if isinstance(value, dict):
             if len(value) == 1:
-                key, value = list(value.items())[0]
+                key, value = dict_item_iter(value).next()
                 if key == types.NULL:
                     return None
         return super(DynamoField, self).to_python(value)
@@ -122,7 +126,7 @@ class DynamoSetField(fields.Field):
 
         if isinstance(value, dict):
             if len(value) == 1:
-                key, value = list(value.items())[0]
+                key, value = dict_item_iter(value).next()
                 if key == 'NULL':
                     return set()
 
@@ -205,6 +209,24 @@ class MapField(DynamoField, fields.TypedDictField):
     Map field
     """
     dynamo_type = types.Map
+
+    def to_python(self, value):
+        """
+        Process a value that may include a Dynamo DB type descriptor.
+
+        :param value: Value to process.
+        :return: Python version of the specified type.
+
+        """
+        if isinstance(value, dict):
+            if len(value) == 1:
+                key, _value = dict_item_iter(value).next()
+                if key == types.NULL:
+                    return None
+                if key == 'M':
+                    value = _value
+
+        return fields.TypedDictField.to_python(self, value)
 
     def prepare_dynamo(self, value):
         if isinstance(value, dict):

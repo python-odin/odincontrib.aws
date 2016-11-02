@@ -74,6 +74,10 @@ def test_field__prepare_db(field_type, value, expected):
     (fields.BooleanField, {'BOOL': False}, False),
     (fields.BooleanField, {'NULL': True}, None),
 
+    (fields.MapField(value_field=fields.StringField()), {'M': {'foo': 'bar'}}, {'foo': 'bar'}),
+    (fields.MapField(value_field=fields.StringField()), {'NULL': True}, None),
+    (fields.MapField(value_field=fields.StringField()), {'foo': 'bar'}, {'foo': 'bar'}),
+
     (fields.DateField, '1942-11-27', TEST_DATE),
     (fields.DateField, {'S': '1942-11-27'}, TEST_DATE),
     (fields.DateField, {'NULL': True}, None),
@@ -102,7 +106,11 @@ def test_field__to_python(field_type, value, expected):
     """
     Test DynamoField.to_python method for each field type
     """
-    target = field_type()
+    if isinstance(field_type, type):
+        target = field_type()
+    else:
+        # Assume this is an instance
+        target = field_type
     actual = target.to_python(value)
 
     if expected is None:
