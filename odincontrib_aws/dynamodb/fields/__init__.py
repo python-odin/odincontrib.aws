@@ -22,10 +22,6 @@ __all__ = ('StringField', 'IntegerField', 'FloatField', 'BooleanField',
            'MultipartKeyField')
 
 
-# Item iterator from a dict (try python 2 first then 3)
-dict_item_iter = dict.iteritems if hasattr(dict, 'iteritems') else dict.items
-
-
 class DynamoField(fields.Field):
     dynamo_type = None
 
@@ -39,7 +35,7 @@ class DynamoField(fields.Field):
         """
         if isinstance(value, dict):
             if len(value) == 1:
-                key, value = dict_item_iter(value).next()
+                (key, value), = value.items()
                 if key == types.NULL:
                     return None
         return super(DynamoField, self).to_python(value)
@@ -220,7 +216,7 @@ class MapField(DynamoField, fields.TypedDictField):
         """
         if isinstance(value, dict):
             if len(value) == 1:
-                key, _value = dict_item_iter(value).next()
+                (key, _value), = value.items()
                 if key == types.NULL:
                     return None
                 if key == 'M':
