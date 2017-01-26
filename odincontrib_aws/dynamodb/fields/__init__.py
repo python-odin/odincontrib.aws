@@ -92,6 +92,10 @@ class BooleanField(DynamoField, fields.BooleanField):
     dynamo_type = types.Boolean
 
 
+# Fallback for python 2.7
+iter_items = getattr(dict, 'iteritems', dict.items)
+
+
 class DynamoSetField(fields.Field):
     dynamo_type = None
 
@@ -122,7 +126,7 @@ class DynamoSetField(fields.Field):
 
         if isinstance(value, dict):
             if len(value) == 1:
-                key, value = next(value.items())
+                key, value = next(iter_items(value))
                 if key == 'NULL':
                     return set()
 
