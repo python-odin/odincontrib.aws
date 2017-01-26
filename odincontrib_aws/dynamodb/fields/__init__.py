@@ -122,7 +122,7 @@ class DynamoSetField(fields.Field):
 
         if isinstance(value, dict):
             if len(value) == 1:
-                key, value = dict_item_iter(value).next()
+                key, value = next(value.items())
                 if key == 'NULL':
                     return set()
 
@@ -147,7 +147,7 @@ class DynamoSetField(fields.Field):
     def prepare(self, value):
         if isinstance(value, (set, list, tuple)):
             prepare = super(DynamoSetField, self).prepare
-            return {prepare(i) for i in value}
+            return [prepare(i) for i in value]
         return value
 
     def prepare_dynamo(self, value):
