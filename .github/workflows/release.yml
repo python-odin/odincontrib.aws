@@ -65,5 +65,4 @@ jobs:
       - name: Upload to PyPI
         id: upload_to_pypi
         run: |
-          poetry config pypi-token.pypi "${POETRY_PYPI_TOKEN_PYPI}"
-          poetry publish
+          poetry publish --username __token__ --password ${POETRY_PYPI_TOKEN_PYPI}
