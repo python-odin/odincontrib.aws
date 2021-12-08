@@ -1,26 +1,34 @@
 from boto3.dynamodb import types
 from boto3.dynamodb.types import NULL
 
-__all__ = ('String', 'StringSet', 'Number', 'NumberSet', 'Integer', 'IntegerSet', 'Float', 'FloatSet',
-           'Decimal', 'DecimalSet', 'Boolean', 'Binary', 'BinarySet', 'List', 'Map')
+__all__ = (
+    "String",
+    "StringSet",
+    "Number",
+    "NumberSet",
+    "Integer",
+    "IntegerSet",
+    "Float",
+    "FloatSet",
+    "Decimal",
+    "DecimalSet",
+    "Boolean",
+    "Binary",
+    "BinarySet",
+    "List",
+    "Map",
+)
 
 
 class DynamoType(dict):
-    """
-    Definition of a Dynamo DB type
-    """
     type_descriptor = None
 
     def __init__(self, value):
         if value is None:
             kwargs = {NULL: True}
         else:
-            kwargs = {self.type_descriptor: self.prepare_value(value)}
+            kwargs = {self.type_descriptor: value}
         super(DynamoType, self).__init__(**kwargs)
-
-    @staticmethod
-    def prepare_value(value):
-        return value
 
     def is_empty(self):
         return False
@@ -44,10 +52,6 @@ class StringSet(DynamoType):
 class Number(DynamoType):
     type_descriptor = types.NUMBER
 
-    @staticmethod
-    def prepare_value(value):
-        return "{}".format(value)
-
 
 # Aliases of Number
 Integer = Number
@@ -57,6 +61,7 @@ Decimal = Number
 
 class NumberSet(DynamoType):
     type_descriptor = types.NUMBER_SET
+
 
 # Aliases of NumberSet
 IntegerSet = NumberSet

@@ -15,11 +15,19 @@ from odin.mapping import force_tuple
 from odin.serializers import datetime_iso_format, date_iso_format, time_iso_format
 from odincontrib_aws.dynamodb import types
 
-__all__ = ('StringField', 'IntegerField', 'FloatField', 'BooleanField',
-           'StringSetField', 'IntegerSetField', 'FloatSetField',
-           'ListField', 'MapField',
-           'DateField', 'DateTimeField', 'NaiveDateTimeField',
-           'MultipartKeyField')
+__all__ = (
+    "StringField",
+    "IntegerField",
+    "FloatField",
+    "BooleanField",
+    "StringSetField",
+    "IntegerSetField",
+    "FloatSetField",
+    "DateField",
+    "DateTimeField",
+    "NaiveDateTimeField",
+    "MultipartKeyField",
+)
 
 
 class DynamoField(fields.Field):
@@ -35,7 +43,7 @@ class DynamoField(fields.Field):
         """
         if isinstance(value, dict):
             if len(value) == 1:
-                (key, value), = value.items()
+                key, value = list(value.items())[0]
                 if key == types.NULL:
                     return None
         return super(DynamoField, self).to_python(value)
@@ -59,6 +67,7 @@ class StringField(DynamoField, fields.StringField):
     """
     String field, utilises the `S` (string) type descriptor.
     """
+
     dynamo_type = types.String
 
 
@@ -89,15 +98,15 @@ class BooleanField(DynamoField, fields.BooleanField):
     """
     Boolean field, utilises the `BOOL` type descriptor
     """
+
     dynamo_type = types.Boolean
 
 
-# Fallback for python 2.7
-iter_items = getattr(dict, 'iteritems', dict.items)
+SET_TYPES = {"SS", "NS", "BS"}
 
 
 class DynamoSetField(fields.Field):
-    dynamo_type = None
+    type_descriptor = None
 
     def __iter__(self):
         """
@@ -126,8 +135,8 @@ class DynamoSetField(fields.Field):
 
         if isinstance(value, dict):
             if len(value) == 1:
-                key, value = next(iter_items(value))
-                if key == 'NULL':
+                key, value = list(value.items())[0]
+                if key == "NULL":
                     return set()
 
         if isinstance(value, (set, list, tuple)):
@@ -135,7 +144,7 @@ class DynamoSetField(fields.Field):
             errors = {}
             for idx, item in enumerate(value):
                 try:
-                    value_set.add(super(DynamoSetField, self).to_python(item))
+                    value_set.add(super().to_python(item))
                 except exceptions.ValidationError as ve:
                     errors[idx] = ve.error_messages
 
@@ -145,13 +154,13 @@ class DynamoSetField(fields.Field):
             return value_set
 
         else:
-            msg = self.error_messages['invalid']
+            msg = self.error_messages["invalid"]
             raise exceptions.ValidationError(msg)
 
     def prepare(self, value):
         if isinstance(value, (set, list, tuple)):
-            prepare = super(DynamoSetField, self).prepare
-            return [prepare(i) for i in value]
+            prepare = super().prepare
+            return {prepare(i) for i in value}
         return value
 
     def prepare_dynamo(self, value):
@@ -162,7 +171,10 @@ class DynamoSetField(fields.Field):
 
         """
         value = self.prepare(value)
-        return self.dynamo_type(value)
+        if value is None:
+            return {"NULL": True}
+        else:
+            return {self.type_descriptor: list(value)}
 
     @classmethod
     def format_value(cls, value, **kwargs):
@@ -173,83 +185,42 @@ class StringSetField(DynamoSetField, fields.StringField):
     """
     String set field
     """
-    dynamo_type = types.StringSet
+
+    type_descriptor = "SS"
 
 
 class IntegerSetField(DynamoSetField, fields.IntegerField):
     """
     Integer set field
     """
-    dynamo_type = types.IntegerSet
+
+    type_descriptor = "NS"
 
 
 class FloatSetField(DynamoSetField, fields.FloatField):
     """
     Float set field
     """
-    dynamo_type = types.FloatSet
 
-
-class ListField(DynamoField, fields.TypedListField):
-    """
-    List field
-    """
-    dynamo_type = types.List
-
-    def prepare_dynamo(self, value):
-        if isinstance(value, (tuple, list)):
-            prepare = self.field.prepare_dynamo
-            value = [prepare(v) for v in value]
-
-        return self.dynamo_type(value)
-
-
-class MapField(DynamoField, fields.TypedDictField):
-    """
-    Map field
-    """
-    dynamo_type = types.Map
-
-    def to_python(self, value):
-        """
-        Process a value that may include a Dynamo DB type descriptor.
-
-        :param value: Value to process.
-        :return: Python version of the specified type.
-
-        """
-        if isinstance(value, dict):
-            if len(value) == 1:
-                (key, _value), = value.items()
-                if key == types.NULL:
-                    return None
-                if key == 'M':
-                    value = _value
-
-        return fields.TypedDictField.to_python(self, value)
-
-    def prepare_dynamo(self, value):
-        if isinstance(value, dict):
-            prepare = self.value_field.prepare_dynamo
-            value = {k: prepare(v) for k, v in value.items()}
-
-        return self.dynamo_type(value)
+    type_descriptor = "NS"
 
 
 ####################################################################
 # Extended fields
+
 
 class DateField(DynamoField, fields.DateField):
     """
     Date field that represents a date in an ISO8601 date string.
     Utilises the `S` (string) type descriptor.
     """
+
     dynamo_type = types.String
 
     def prepare(self, value):
         if value:
             value = date_iso_format(value)
-        return super(DateField, self).prepare(value)
+        return super().prepare(value)
 
 
 class TimeField(DynamoField, fields.TimeField):
@@ -257,12 +228,13 @@ class TimeField(DynamoField, fields.TimeField):
     Time field that represents a time as an ISO8601 time string.
     Utilises the `S` (string) type descriptor.
     """
+
     dynamo_type = types.String
 
     def prepare(self, value):
         if value:
             value = time_iso_format(value)
-        return super(TimeField, self).prepare(value)
+        return super().prepare(value)
 
 
 class DateTimeField(DynamoField, fields.DateTimeField):
@@ -270,12 +242,13 @@ class DateTimeField(DynamoField, fields.DateTimeField):
     Date time field that represents a date/time in a ISO8601 date string.
     Utilises the `S` (string) type descriptor.
     """
+
     dynamo_type = types.String
 
     def prepare(self, value):
         if value:
             value = datetime_iso_format(value)
-        return super(DateTimeField, self).prepare(value)
+        return super().prepare(value)
 
 
 class NaiveTimeField(DynamoField, fields.NaiveTimeField):
@@ -287,10 +260,11 @@ class NaiveTimeField(DynamoField, fields.NaiveTimeField):
     the timezone, a timezone will not be applied if one is not specified.
 
     """
+
     dynamo_type = types.String
 
     def prepare(self, value):
-        value = super(NaiveTimeField, self).prepare(value)
+        value = super().prepare(value)
         if value is not None:
             value = value.isoformat()
         return value
@@ -306,10 +280,11 @@ class NaiveDateTimeField(DynamoField, fields.NaiveDateTimeField):
     specified.
 
     """
+
     dynamo_type = types.String
 
     def prepare(self, value):
-        value = super(NaiveDateTimeField, self).prepare(value)
+        value = super().prepare(value)
         if value is not None:
             value = value.isoformat()
         return value
@@ -319,11 +294,12 @@ class MultipartKeyField(fields.virtual.MultiPartField):
     """
     A field whose value is the combination of several other fields.
     """
+
     dynamo_type = types.String
     data_type_name = "String"
 
-    def __init__(self, field_names, separator=':', **kwargs):
-        super(MultipartKeyField, self).__init__(field_names, separator, **kwargs)
+    def __init__(self, field_names, separator=":", **kwargs):
+        super().__init__(field_names, separator, **kwargs)
 
     def prepare_dynamo(self, value):
         """
@@ -332,7 +308,7 @@ class MultipartKeyField(fields.virtual.MultiPartField):
         return self.dynamo_type(value)
 
     @classmethod
-    def format_value(cls, values, separator=':'):
+    def format_value(cls, values, separator=":"):
         values = force_tuple(values)
         value = separator.join(str(v) for v in values)
         return cls.dynamo_type(value)
