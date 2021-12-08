@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 from odincontrib_aws.dynamodb import utils
 
 from .tables import Book

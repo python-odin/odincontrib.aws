@@ -1,21 +1,36 @@
 from odin.utils import getmeta, cached_property
 
-__all__ = ('LocalIndex', 'GlobalIndex', 'PROJECTION_ALL', 'PROJECTION_INCLUDE', 'PROJECTION_KEYS_ONLY')
+__all__ = (
+    "LocalIndex",
+    "GlobalIndex",
+    "PROJECTION_ALL",
+    "PROJECTION_INCLUDE",
+    "PROJECTION_KEYS_ONLY",
+)
 
 
 # Projection constants
-PROJECTION_ALL = 'ALL'
-PROJECTION_KEYS_ONLY = 'KEYS_ONLY'
-PROJECTION_INCLUDE = 'INCLUDE'
+PROJECTION_ALL = "ALL"
+PROJECTION_KEYS_ONLY = "KEYS_ONLY"
+PROJECTION_INCLUDE = "INCLUDE"
 
 
-class Index(object):
+class Index:
     """
     Index definition on a table.
     """
+
     index_type = None
 
-    def __init__(self, hash_key, range_key=None, projection=PROJECTION_ALL, includes=None, excludes=None, name=None):
+    def __init__(
+        self,
+        hash_key,
+        range_key=None,
+        projection=PROJECTION_ALL,
+        includes=None,
+        excludes=None,
+        name=None,
+    ):
         self.name = name
         self.hash_key = hash_key
         self.range_key = range_key
@@ -59,9 +74,12 @@ class Index(object):
         includes = self.includes or getmeta(self.table).all_field_map
         excludes = self.excludes or []
         return [
-            field for field in getmeta(self.table).fields
-            if field.attname in includes and field.attname not in excludes
-            and field.attname != self.hash_key and field.attname != self.range_key
+            field
+            for field in getmeta(self.table).fields
+            if field.attname in includes
+            and field.attname not in excludes
+            and field.attname != self.hash_key
+            and field.attname != self.range_key
         ]
 
     def definition(self):
@@ -69,25 +87,21 @@ class Index(object):
         Generate a Index definition (used to create/update table)
         """
         # Generate KeySchema details
-        key_schema = [{
-            'AttributeName': self.hash_field.name,
-            'KeyType': 'HASH',
-        }]
+        key_schema = [{"AttributeName": self.hash_field.name, "KeyType": "HASH",}]
         if self.range_key:
-            key_schema.append({
-                'AttributeName': self.range_field.name,
-                'KeyType': 'RANGE',
-            })
+            key_schema.append(
+                {"AttributeName": self.range_field.name, "KeyType": "RANGE",}
+            )
 
         # Generate projection details
-        projection = {'ProjectionType': self.projection}
+        projection = {"ProjectionType": self.projection}
         if self.projection == PROJECTION_INCLUDE:
-            projection['NonKeyAttributes'] = self.included_fields
+            projection["NonKeyAttributes"] = self.included_fields
 
         return {
-            'IndexName': self.name,
-            'KeySchema': key_schema,
-            'Projection': projection
+            "IndexName": self.name,
+            "KeySchema": key_schema,
+            "Projection": projection,
         }
 
 
@@ -109,7 +123,8 @@ class LocalIndex(Index):
         >>> session.scan(MyTable.age_index)
 
     """
-    index_type = 'local'
+
+    index_type = "local"
 
 
 class GlobalIndex(Index):
@@ -130,15 +145,27 @@ class GlobalIndex(Index):
         >>> session.scan(MyTable.age_index)
 
     """
-    index_type = 'global'
 
-    def __init__(self, hash_key, range_key=None, projection=PROJECTION_ALL, includes=None, excludes=None,
-                 read_capacity=None, write_capacity=None, name=None):
+    index_type = "global"
+
+    def __init__(
+        self,
+        hash_key,
+        range_key=None,
+        projection=PROJECTION_ALL,
+        includes=None,
+        excludes=None,
+        read_capacity=None,
+        write_capacity=None,
+        name=None,
+    ):
         """
         :param read_capacity: Override table read capacity
         :param write_capacity: Override table write capacity
         """
-        super(GlobalIndex, self).__init__(hash_key, range_key, projection, includes, excludes, name)
+        super(GlobalIndex, self).__init__(
+            hash_key, range_key, projection, includes, excludes, name
+        )
         self.read_capacity = read_capacity
         self.write_capacity = write_capacity
 
@@ -152,8 +179,12 @@ class GlobalIndex(Index):
         """
         meta = getmeta(self.table)
         definition = super(GlobalIndex, self).definition()
-        definition['ProvisionedThroughput'] = {
-            'ReadCapacityUnits': read_capacity or self.read_capacity or meta.read_capacity,
-            'WriteCapacityUnits': write_capacity or self.write_capacity or meta.write_capacity,
+        definition["ProvisionedThroughput"] = {
+            "ReadCapacityUnits": read_capacity
+            or self.read_capacity
+            or meta.read_capacity,
+            "WriteCapacityUnits": write_capacity
+            or self.write_capacity
+            or meta.write_capacity,
         }
         return definition

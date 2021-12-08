@@ -1,8 +1,23 @@
 from boto3.dynamodb import types
 from boto3.dynamodb.types import NULL
 
-__all__ = ('String', 'StringSet', 'Number', 'NumberSet', 'Integer', 'IntegerSet', 'Float', 'FloatSet',
-           'Decimal', 'DecimalSet', 'Boolean', 'Binary', 'BinarySet', 'List', 'Map')
+__all__ = (
+    "String",
+    "StringSet",
+    "Number",
+    "NumberSet",
+    "Integer",
+    "IntegerSet",
+    "Float",
+    "FloatSet",
+    "Decimal",
+    "DecimalSet",
+    "Boolean",
+    "Binary",
+    "BinarySet",
+    "List",
+    "Map",
+)
 
 
 class DynamoType(dict):
@@ -37,6 +52,7 @@ class StringSet(DynamoType):
 class Number(DynamoType):
     type_descriptor = types.NUMBER
 
+
 # Aliases of Number
 Integer = Number
 Float = Number
@@ -45,6 +61,7 @@ Decimal = Number
 
 class NumberSet(DynamoType):
     type_descriptor = types.NUMBER_SET
+
 
 # Aliases of NumberSet
 IntegerSet = NumberSet

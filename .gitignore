@@ -2,3 +2,4 @@
 .cache
 *.pyc
 *.egg-info
+requirements.txt

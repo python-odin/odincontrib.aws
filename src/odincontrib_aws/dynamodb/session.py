@@ -1,26 +1,31 @@
-from collections import defaultdict
-
-import boto3
 import logging
 import time
+from collections import defaultdict
+from typing import cast
 
+import boto3
 from botocore.exceptions import ClientError
 from odin.fields import NOT_PROVIDED
 from odin.resources import create_resource_from_dict
 from odin.utils import getmeta, chunk
 
-from odincontrib_aws.dynamodb.exceptions import TableAlreadyExists, BatchLoadRetryLimitReached
+from odincontrib_aws.dynamodb.exceptions import (
+    TableAlreadyExists,
+    BatchLoadRetryLimitReached,
+)
 from odincontrib_aws.dynamodb.query import Scan, Query
+from odincontrib_aws.dynamodb.table import TableOptions
 
-logger = logging.getLogger('odincontrib_aws.dynamodb.session')
+logger = logging.getLogger("odincontrib_aws.dynamodb.session")
 
 MAX_DYNAMO_BATCH_SIZE = 25
 
 
-class Session(object):
+class Session:
     """
     DynamoDB Session
     """
+
     def __init__(self, client=None, prefix=None):
         """
         Initialise session
@@ -29,7 +34,7 @@ class Session(object):
         :param client: Client object; if not supplied a client will be created using boto3
 
         """
-        self.client = client or boto3.client('dynamodb')
+        self.client = client or boto3.client("dynamodb")
         self.prefix = prefix
 
     def create_table(self, table, throughput=None, **kwargs):
@@ -57,37 +62,33 @@ class Session(object):
         """
         throughput = throughput or {}
 
-        meta = getmeta(table)
-        kwargs['TableName'] = meta.table_name(self)
+        meta = cast(TableOptions, getmeta(table))
+        kwargs["TableName"] = meta.table_name(self)
 
         # Check metadata is correct
         meta.check()
 
         # Build key schema
-        key_schema = [{
-            'AttributeName': meta.hash_field.name,
-            'KeyType': 'HASH'
-        }]
+        key_schema = [{"AttributeName": meta.hash_field.name, "KeyType": "HASH"}]
         if meta.range_field:
-            key_schema.append({
-                'AttributeName': meta.range_field.name,
-                'KeyType': 'RANGE'
-            })
-        kwargs['KeySchema'] = key_schema
+            key_schema.append(
+                {"AttributeName": meta.range_field.name, "KeyType": "RANGE"}
+            )
+        kwargs["KeySchema"] = key_schema
 
         # Build attribute definitions
         attributes = {field for field in meta.key_fields}
 
         # Build provisioned throughput
         table_throughput = {
-            'read_capacity': meta.read_capacity,
-            'write_capacity': meta.write_capacity,
+            "read_capacity": meta.read_capacity,
+            "write_capacity": meta.write_capacity,
         }
         table_throughput.update(throughput.get(None) or {})
 
-        kwargs['ProvisionedThroughput'] = {
-            'ReadCapacityUnits': table_throughput['read_capacity'],
-            'WriteCapacityUnits': table_throughput['write_capacity'],
+        kwargs["ProvisionedThroughput"] = {
+            "ReadCapacityUnits": table_throughput["read_capacity"],
+            "WriteCapacityUnits": table_throughput["write_capacity"],
         }
 
         # Add indexes and gather attributes
@@ -97,32 +98,38 @@ class Session(object):
                 indexes.append(idx.definition())
                 attributes.update({field for field in idx.key_fields})
 
-            kwargs['LocalSecondaryIndexes'] = indexes
+            kwargs["LocalSecondaryIndexes"] = indexes
 
         if meta.global_indexes:
             indexes = []
             for idx in meta.global_indexes:
                 index_throughput = throughput.get(idx.name) or {}
-                indexes.append(idx.definition(
-                    read_capacity=index_throughput.get('read_capacity', table_throughput['read_capacity']),
-                    write_capacity=index_throughput.get('write_capacity', table_throughput['write_capacity']),
-                ))
+                indexes.append(
+                    idx.definition(
+                        read_capacity=index_throughput.get(
+                            "read_capacity", table_throughput["read_capacity"]
+                        ),
+                        write_capacity=index_throughput.get(
+                            "write_capacity", table_throughput["write_capacity"]
+                        ),
+                    )
+                )
                 attributes.update({field for field in idx.key_fields})
 
-            kwargs['GlobalSecondaryIndexes'] = indexes
+            kwargs["GlobalSecondaryIndexes"] = indexes
 
         # Build attribute definitions
-        kwargs['AttributeDefinitions'] = [{
-            'AttributeName': field.name,
-            'AttributeType': field.type_descriptor
-        } for field in attributes]
+        kwargs["AttributeDefinitions"] = [
+            {"AttributeName": field.name, "AttributeType": field.type_descriptor}
+            for field in attributes
+        ]
 
         # Call create
         try:
             return self.client.create_table(**kwargs)
         except ClientError as ex:
-            if ex.response['Error']['Code'] == u'ResourceInUseException':
-                raise TableAlreadyExists(ex.response['Error']['Message'])
+            if ex.response["Error"]["Code"] == u"ResourceInUseException":
+                raise TableAlreadyExists(ex.response["Error"]["Message"])
             raise
 
     def delete_table(self, table):
@@ -133,7 +140,8 @@ class Session(object):
         :return: Delete response
 
         """
-        return self.client.delete_table(TableName=getmeta(table).table_name(self))
+        meta = cast(TableOptions, getmeta(table))
+        return self.client.delete_table(TableName=meta.table_name(self))
 
     def put_item(self, item, **kwargs):
         """
@@ -149,25 +157,32 @@ class Session(object):
             >>>
             >>> session = dynamo.Session()
             >>>
-            >>> item = MyTable("Foo", 24)
-            >>> session.put_item(item)
+            >>> table = MyTable("Foo", 24)
+            >>> session.put_item(table)
 
         :param item: Table instance to put into Dynamo.
 
         """
-        kwargs['TableName'] = getmeta(item).table_name(self)
+        meta = cast(TableOptions, getmeta(item))
+        kwargs["TableName"] = meta.table_name(self)
 
-        if hasattr(item, 'on_store'):
+        if hasattr(item, "on_store"):
             item.on_store(is_update=False)
 
-        kwargs['Item'] = item.to_dynamo_dict()
+        kwargs["Item"] = item.to_dynamo_dict()
         self.client.put_item(**kwargs)
 
     # Alias put
     save_item = put_item
 
-    def batch_write_item(self, items, batch_size=MAX_DYNAMO_BATCH_SIZE, batch_counter_step=MAX_DYNAMO_BATCH_SIZE,
-                         backoff_time=5, retry_limit=5):
+    def batch_write_item(
+        self,
+        items,
+        batch_size=MAX_DYNAMO_BATCH_SIZE,
+        batch_counter_step=MAX_DYNAMO_BATCH_SIZE,
+        backoff_time=5,
+        retry_limit=5,
+    ):
         """
         Batch write a number of items into DynamoDB
 
@@ -175,7 +190,7 @@ class Session(object):
         :param batch_size: Size of each batch.
         :param batch_counter_step: Number of batches loaded between each counter message.
         :param backoff_time: Time to delay before trying again
-        :parma retry_limit: Number of retry attempts before giving up.
+        :param retry_limit: Number of retry attempts before giving up.
 
         """
         idx = 0
@@ -185,8 +200,13 @@ class Session(object):
         for idx, batch_resources in enumerate(chunk(items, batch_size)):
             batch = defaultdict(list)
             for resource in batch_resources:
-                batch[getmeta(resource).table_name(self)].append(
-                    {'PutRequest': {'Item': resource.to_dynamo_dict(skip_null_fields=True)}}
+                meta = cast(TableOptions, getmeta(resource))
+                batch[meta.table_name(self)].append(
+                    {
+                        "PutRequest": {
+                            "Item": resource.to_dynamo_dict(skip_null_fields=True)
+                        }
+                    }
                 )
                 item_count += 1
 
@@ -196,7 +216,7 @@ class Session(object):
             retry = 0
             while batch:
                 result = client.batch_write_item(RequestItems=batch)
-                unprocessed = result.get('UnprocessedItems')
+                unprocessed = result.get("UnprocessedItems")
                 if unprocessed:
                     retry += 1
                     if retry > retry_limit:
@@ -205,8 +225,13 @@ class Session(object):
                     # Assign the un-processed items to the next batch
                     batch = unprocessed
 
-                    logger.warning("Returned %s unprocessed items, waiting %s seconds. Retry %s of %s.",
-                                   len(batch), backoff_time, retry, retry_limit)
+                    logger.warning(
+                        "Returned %s unprocessed items, waiting %s seconds. Retry %s of %s.",
+                        len(batch),
+                        backoff_time,
+                        retry,
+                        retry_limit,
+                    )
                     time.sleep(backoff_time)
                 else:
                     batch = None
@@ -227,9 +252,9 @@ class Session(object):
         :param kwargs: Additional parameters (defined by Boto3 ``client.update_item``).
 
         """
-        meta = getmeta(item)
-        kwargs['TableName'] = meta.table_name(self)
-        kwargs['Key'] = item.to_dynamo_dict(meta.key_fields)
+        meta = cast(TableOptions, getmeta(item))
+        kwargs["TableName"] = meta.table_name(self)
+        kwargs["Key"] = item.to_dynamo_dict(meta.key_fields)
 
         if fields is None:
             fields = list(meta.fields)
@@ -238,16 +263,16 @@ class Session(object):
         elif not isinstance(fields, list):
             fields = [fields]
 
-        if hasattr(item, 'on_store'):
+        if hasattr(item, "on_store"):
             extra_fields = item.on_store(is_update=True)
             if extra_fields:
                 fields.extend(extra_fields)
 
-        return_values = kwargs.setdefault('ReturnValues', 'NONE')
+        return_values = kwargs.setdefault("ReturnValues", "NONE")
 
         # Attributes
         if fields:
-            kwargs['AttributeUpdates'] = item.to_dynamo_dict(fields, is_update=True)
+            kwargs["AttributeUpdates"] = item.to_dynamo_dict(fields, is_update=True)
 
         try:
             result = self.client.update_item(**kwargs)
@@ -255,10 +280,12 @@ class Session(object):
             # TODO: Error handling for common errors
             raise
 
-        if return_values != 'NONE':
+        if return_values != "NONE":
             # Return a new item with the changes
             # TODO: For "New" changes update the existing item
-            return create_resource_from_dict(result.get('Attributes'), item, copy_dict=False, full_clean=False)
+            return create_resource_from_dict(
+                result.get("Attributes"), item, copy_dict=False, full_clean=False
+            )
 
     def get_update_item(self, table, key_value, **kwargs):
         """
@@ -274,10 +301,10 @@ class Session(object):
         :return: Instance of this resource; or None if not found
 
         """
-        meta = getmeta(table)
-        kwargs['TableName'] = meta.table_name(self)
-        kwargs['Key'] = table.format_key(key_value)
-        kwargs['ReturnValues'] = 'ALL_NEW'
+        meta = cast(TableOptions, getmeta(table))
+        kwargs["TableName"] = meta.table_name(self)
+        kwargs["Key"] = table.format_key(key_value)
+        kwargs["ReturnValues"] = "ALL_NEW"
 
         # TODO: Identify any field references in expressions and populate ExpressionAttributeNames
 
@@ -286,13 +313,15 @@ class Session(object):
         except ClientError as ex:
             # ConditionalCheckFailedException is raised if an item is not found
             # and an ConditionExpression is defined.
-            if ex.response['Error']['Code'] == u'ConditionalCheckFailedException':
+            if ex.response["Error"]["Code"] == u"ConditionalCheckFailedException":
                 return
             raise
 
-        row = result.get('Attributes')
+        row = result.get("Attributes")
         if row:
-            return create_resource_from_dict(row, table, copy_dict=False, full_clean=False)
+            return create_resource_from_dict(
+                row, table, copy_dict=False, full_clean=False
+            )
 
     def get_item(self, table, key_value, **kwargs):
         """
@@ -305,8 +334,9 @@ class Session(object):
         :return: Instance of this resource; or None if not found
 
         """
-        kwargs['TableName'] = getmeta(table).table_name(self)
-        kwargs['Key'] = table.format_key(key_value)
+        meta = cast(TableOptions, getmeta(table))
+        kwargs["TableName"] = meta.table_name(self)
+        kwargs["Key"] = table.format_key(key_value)
 
         # Get item from client
         try:
@@ -315,9 +345,11 @@ class Session(object):
             # TODO: Error handling for common errors
             raise
 
-        row = result.get('Item')
+        row = result.get("Item")
         if row:
-            return create_resource_from_dict(row, table, copy_dict=False, full_clean=False)
+            return create_resource_from_dict(
+                row, table, copy_dict=False, full_clean=False
+            )
 
     def scan(self, table_of_index):
         """
@@ -337,6 +369,7 @@ class Session(object):
         :param table_of_index: Table or Index to query; either type or instance.
         :type table_of_index: odincontrib_aws.dynamodb.Table | odincontrib_aws.dynamodb.Index
         :param hash_value: Value for the hash key.
+        :param range_value:
         :return: Query instance
 
         """

@@ -8,13 +8,14 @@ from odin.compatibility import deprecated
 
 from odincontrib_aws.dynamodb.indexes import Index
 
-logger = logging.getLogger('odincontrib_aws.dynamodb.query')
+logger = logging.getLogger("odincontrib_aws.dynamodb.query")
 
 
-class QueryResult(object):
+class QueryResult:
     """
     Result of a Query or Scan operation.
     """
+
     def __init__(self, query, result):
         self.query = query
         self._result = result
@@ -25,27 +26,29 @@ class QueryResult(object):
     def __iter__(self):
         table = self.query.table
         for item in self.raw_results:
-            yield create_resource_from_dict(item, table, copy_dict=False, full_clean=False)
+            yield create_resource_from_dict(
+                item, table, copy_dict=False, full_clean=False
+            )
 
     @property
     def raw_results(self):
-        return self._result['Items']
+        return self._result["Items"]
 
     @property
     def count(self):
-        return self._result['Count']
+        return self._result["Count"]
 
     @property
     def scanned(self):
-        return self._result['ScannedCount']
+        return self._result["ScannedCount"]
 
     @property
     def consumed_capacity(self):
-        return self._result['ConsumedCapacity']
+        return self._result["ConsumedCapacity"]
 
     @property
     def last_evaluated_key(self):
-        return self._result.get('LastEvaluatedKey')
+        return self._result.get("LastEvaluatedKey")
 
 
 class PagedQueryResult(object):
@@ -54,6 +57,7 @@ class PagedQueryResult(object):
 
     This result set will make multiple queries to Dynamo DB to get each page of results.
     """
+
     def __init__(self, query):
         self.query = query
 
@@ -86,15 +90,20 @@ class PagedQueryResult(object):
                 logger.info("Returned %s of %s records.", results.count, self.count)
                 break
             else:
-                logger.info("Returned %s of %s records; continuing from: %s",
-                            results.count, self.count, results.last_evaluated_key)
-                params['ExclusiveStartKey'] = results.last_evaluated_key
+                logger.info(
+                    "Returned %s of %s records; continuing from: %s",
+                    results.count,
+                    self.count,
+                    results.last_evaluated_key,
+                )
+                params["ExclusiveStartKey"] = results.last_evaluated_key
 
 
 class QueryBase(bases.TypedResourceIterable):
     """
     Base of Query objects
     """
+
     def __init__(self, session, table_of_index):
         self.session = session
 
@@ -116,9 +125,9 @@ class QueryBase(bases.TypedResourceIterable):
 
     def get_params(self):
         params = self.params
-        params['TableName'] = getmeta(self.table).table_name(self.session)
+        params["TableName"] = getmeta(self.table).table_name(self.session)
         if self.index:
-            params['IndexName'] = self.index.name
+            params["IndexName"] = self.index.name
         return params
 
     def copy(self):
@@ -151,10 +160,10 @@ class QueryBase(bases.TypedResourceIterable):
         apply in a subsequent operation, so that you can pick up where you
         left off.
         """
-        self.params['Limit'] = value
+        self.params["Limit"] = value
         return self
 
-    def select(self, value='ALL_ATTRIBUTES'):
+    def select(self, value="ALL_ATTRIBUTES"):
         """
         The attributes to be returned in the result. You can retrieve all item
         attributes, specific item attributes, or the count of matching items.
@@ -176,12 +185,17 @@ class QueryBase(bases.TypedResourceIterable):
         is ``SPECIFIC_ATTRIBUTES``. (This usage is equivalent to specifying
         AttributesToGet without any value for Select.)
         """
-        assert value in ('ALL_ATTRIBUTES', 'ALL_PROJECTED_ATTRIBUTES', 'COUNT', 'SPECIFIC_ATTRIBUTES')
+        assert value in (
+            "ALL_ATTRIBUTES",
+            "ALL_PROJECTED_ATTRIBUTES",
+            "COUNT",
+            "SPECIFIC_ATTRIBUTES",
+        )
 
-        self.params['Select'] = value
+        self.params["Select"] = value
         return self
 
-    def consumed_capacity(self, value='TOTAL'):
+    def consumed_capacity(self, value="TOTAL"):
         """
         Determines the level of detail about provisioned throughput
         consumption that is returned in the response:
@@ -196,9 +210,9 @@ class QueryBase(bases.TypedResourceIterable):
             ConsumedCapacity for the operation.
         - ``NONE`` - No ConsumedCapacity details are included in the response.
         """
-        assert value in ('INDEXES', 'TOTAL', 'NONE')
+        assert value in ("INDEXES", "TOTAL", "NONE")
 
-        self.params['ReturnConsumedCapacity'] = value
+        self.params["ReturnConsumedCapacity"] = value
         return self
 
     def consistent(self, value=True):
@@ -211,7 +225,7 @@ class QueryBase(bases.TypedResourceIterable):
         indexes. If you query a global secondary index with ConsistentRead set
         to *true*, you will receive a ValidationException.
         """
-        self.params['ConsistentRead'] = value
+        self.params["ConsistentRead"] = value
         return self
 
 
@@ -219,6 +233,7 @@ class Scan(QueryBase):
     """
     Perform a scan operation against a table.
     """
+
     def __init__(self, *args):
         super(Scan, self).__init__(*args)
         self.command = self.session.client.scan
@@ -228,6 +243,7 @@ class Query(QueryBase):
     """
     perform a query operation against a table.
     """
+
     def __init__(self, hash_value, range_value, *args):
         super(Query, self).__init__(*args)
         self.hash_value = hash_value
@@ -246,12 +262,13 @@ class Query(QueryBase):
         key_values = (self.hash_value, self.range_value)
 
         # TODO: Switch to KeyConditionExpression
-        params['KeyConditions'] = {
+        params["KeyConditions"] = {
             f.name: {
-                'AttributeValueList': [f.prepare_dynamo(v)],
-                'ComparisonOperator': 'EQ'
+                "AttributeValueList": [f.prepare_dynamo(v)],
+                "ComparisonOperator": "EQ",
             }
-            for f, v in zip(key_fields, key_values) if v is not NOT_PROVIDED
+            for f, v in zip(key_fields, key_values)
+            if v is not NOT_PROVIDED
         }
 
         return params
