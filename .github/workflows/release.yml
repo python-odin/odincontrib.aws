@@ -5,7 +5,11 @@ on:
   push:
     branches:
       - master
-      
+    tags:
+      # Matches 1.2.3 and 1.2.3.4
+      - "[0-9]+.[0-9]+.[0-9]+"
+      - "[0-9]+.[0-9]+.[0-9].+[0-9]+"
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -42,7 +46,7 @@ jobs:
           release_name: Release ${{ steps.build_package.outputs.version }}
           prerelease: false
 
-      - name: Attach Release Wheel
+      - name: Upload Release Wheel
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -52,7 +56,7 @@ jobs:
           asset_name: ${{ steps.build_package.outputs.wheel }}
           asset_content_type: application/x-pywheel+zip
 
-      - name: Attach Release Source
+      - name: Upload Release Source
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -64,4 +68,6 @@ jobs:
 
       - name: Upload to PyPI
         id: upload_to_pypi
-        run: poetry publish --username __token__ --password ${{ secrets.POETRY_PYPI_TOKEN_PYPI }}
+        run: |
+          poetry config pypi-token.pypi "$POETRY_PYPI_TOKEN_PYPI"
+          poetry publish
