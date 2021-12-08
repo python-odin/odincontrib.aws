@@ -144,7 +144,7 @@ class DynamoSetField(fields.Field):
             errors = {}
             for idx, item in enumerate(value):
                 try:
-                    value_set.add(super(DynamoSetField, self).to_python(item))
+                    value_set.add(super().to_python(item))
                 except exceptions.ValidationError as ve:
                     errors[idx] = ve.error_messages
 
@@ -159,7 +159,7 @@ class DynamoSetField(fields.Field):
 
     def prepare(self, value):
         if isinstance(value, (set, list, tuple)):
-            prepare = super(DynamoSetField, self).prepare
+            prepare = super().prepare
             return {prepare(i) for i in value}
         return value
 
@@ -220,7 +220,7 @@ class DateField(DynamoField, fields.DateField):
     def prepare(self, value):
         if value:
             value = date_iso_format(value)
-        return super(DateField, self).prepare(value)
+        return super().prepare(value)
 
 
 class TimeField(DynamoField, fields.TimeField):
@@ -234,7 +234,7 @@ class TimeField(DynamoField, fields.TimeField):
     def prepare(self, value):
         if value:
             value = time_iso_format(value)
-        return super(TimeField, self).prepare(value)
+        return super().prepare(value)
 
 
 class DateTimeField(DynamoField, fields.DateTimeField):
@@ -248,7 +248,7 @@ class DateTimeField(DynamoField, fields.DateTimeField):
     def prepare(self, value):
         if value:
             value = datetime_iso_format(value)
-        return super(DateTimeField, self).prepare(value)
+        return super().prepare(value)
 
 
 class NaiveTimeField(DynamoField, fields.NaiveTimeField):
@@ -264,7 +264,7 @@ class NaiveTimeField(DynamoField, fields.NaiveTimeField):
     dynamo_type = types.String
 
     def prepare(self, value):
-        value = super(NaiveTimeField, self).prepare(value)
+        value = super().prepare(value)
         if value is not None:
             value = value.isoformat()
         return value
@@ -284,7 +284,7 @@ class NaiveDateTimeField(DynamoField, fields.NaiveDateTimeField):
     dynamo_type = types.String
 
     def prepare(self, value):
-        value = super(NaiveDateTimeField, self).prepare(value)
+        value = super().prepare(value)
         if value is not None:
             value = value.isoformat()
         return value
@@ -299,7 +299,7 @@ class MultipartKeyField(fields.virtual.MultiPartField):
     data_type_name = "String"
 
     def __init__(self, field_names, separator=":", **kwargs):
-        super(MultipartKeyField, self).__init__(field_names, separator, **kwargs)
+        super().__init__(field_names, separator, **kwargs)
 
     def prepare_dynamo(self, value):
         """
