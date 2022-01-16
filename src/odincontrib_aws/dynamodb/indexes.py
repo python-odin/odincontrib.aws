@@ -1,5 +1,8 @@
 from enum import Enum
-from functools import cached_property
+try:
+    from functools import cached_property
+except ImportError:
+    from odin.utils import cached_property
 
 from .table import getoptions
 
