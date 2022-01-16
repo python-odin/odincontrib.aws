@@ -28,21 +28,24 @@ class DynamoType(dict):
             kwargs = {NULL: True}
         else:
             kwargs = {self.type_descriptor: value}
-        super(DynamoType, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
     def is_empty(self):
         return False
 
     def is_null(self):
-        return self.values()[0] is None
+        return NULL in self
+
+    @property
+    def value(self):
+        return None if NULL in self else self.get(self.type_descriptor)
 
 
 class String(DynamoType):
     type_descriptor = types.STRING
 
     def is_empty(self):
-        value = self.values()[0]
-        return value is not None and len(value) == 0
+        return not bool(self.value)
 
 
 class StringSet(DynamoType):

@@ -3,10 +3,10 @@ import logging
 from odin import bases
 from odin.fields import NOT_PROVIDED
 from odin.resources import create_resource_from_dict
-from odin.utils import getmeta
 from odin.compatibility import deprecated
 
-from odincontrib_aws.dynamodb.indexes import Index
+from .table import getoptions
+from .indexes import Index
 
 logger = logging.getLogger("odincontrib_aws.dynamodb.query")
 
@@ -125,7 +125,7 @@ class QueryBase(bases.TypedResourceIterable):
 
     def get_params(self):
         params = self.params
-        params["TableName"] = getmeta(self.table).table_name(self.session)
+        params["TableName"] = getoptions(self.table).table_name(self.session)
         if self.index:
             params["IndexName"] = self.index.name
         return params
@@ -258,7 +258,7 @@ class Query(QueryBase):
         if self.index:
             key_fields = self.index.key_fields
         else:
-            key_fields = getmeta(self.table).key_fields
+            key_fields = getoptions(self.table).key_fields
         key_values = (self.hash_value, self.range_value)
 
         # TODO: Switch to KeyConditionExpression

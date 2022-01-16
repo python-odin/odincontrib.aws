@@ -9,12 +9,12 @@ from odin.fields import NOT_PROVIDED
 from odin.resources import create_resource_from_dict
 from odin.utils import getmeta, chunk
 
-from odincontrib_aws.dynamodb.exceptions import (
+from .exceptions import (
     TableAlreadyExists,
     BatchLoadRetryLimitReached,
 )
-from odincontrib_aws.dynamodb.query import Scan, Query
-from odincontrib_aws.dynamodb.table import TableOptions
+from .query import Scan, Query
+from .table import TableOptions, getoptions
 
 logger = logging.getLogger("odincontrib_aws.dynamodb.session")
 
@@ -301,8 +301,8 @@ class Session:
         :return: Instance of this resource; or None if not found
 
         """
-        meta = cast(TableOptions, getmeta(table))
-        kwargs["TableName"] = meta.table_name(self)
+        options = getoptions(table)
+        kwargs["TableName"] = options.table_name(self)
         kwargs["Key"] = table.format_key(key_value)
         kwargs["ReturnValues"] = "ALL_NEW"
 
@@ -334,8 +334,8 @@ class Session:
         :return: Instance of this resource; or None if not found
 
         """
-        meta = cast(TableOptions, getmeta(table))
-        kwargs["TableName"] = meta.table_name(self)
+        options = getoptions(table)
+        kwargs["TableName"] = options.table_name(self)
         kwargs["Key"] = table.format_key(key_value)
 
         # Get item from client

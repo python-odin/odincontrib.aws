@@ -2,24 +2,25 @@
 Resources as tables
 """
 import logging
-import six
 from collections import defaultdict
+from typing import Union, Type, cast
 
 from odin import registration
+from odin.utils import getmeta
 from odin.mapping import ResourceFieldResolver
 from odin.resources import ResourceOptions, ResourceType, ResourceBase
 from odin.utils import force_tuple, cached_property
 
 from odincontrib_aws.dynamodb.utils import domino_field_iter_items, field_smart_iter
 
-__all__ = ("Table", "TableOptions")
+__all__ = ("Table", "TableOptions", "getoptions")
 
 logger = logging.getLogger("odincontrib.aws.dynamodb.table")
 
 
 class TableOptions(ResourceOptions):
     """
-    Table specifc options
+    Table specific options
     """
 
     META_OPTION_NAMES = ResourceOptions.META_OPTION_NAMES + (
@@ -64,13 +65,13 @@ class TableOptions(ResourceOptions):
     def hash_field(self):
         key_fields = self.key_fields
         if key_fields:
-            return self.key_fields[0]
+            return key_fields[0]
 
     @cached_property
     def range_field(self):
         key_fields = self.key_fields
         if len(key_fields) > 1:
-            return self.key_fields[1]
+            return key_fields[1]
 
     @property
     def global_indexes(self):
@@ -85,8 +86,7 @@ class TableType(ResourceType):
     meta_options = TableOptions
 
 
-@six.add_metaclass(TableType)
-class Table(ResourceBase):
+class Table(ResourceBase, metaclass=TableType):
     """
     Definition of a DynamoDB Table
     """
@@ -103,7 +103,7 @@ class Table(ResourceBase):
 
         """
         key_values = force_tuple(key_values)
-        key_fields = cls._meta.key_fields
+        key_fields = getoptions(cls).key_fields
         if len(key_values) != len(key_fields):
             raise KeyError(
                 "This table uses a multi part key, `key_value` must be pair of values in a tuple."
@@ -128,8 +128,9 @@ class Table(ResourceBase):
             # Ensure fields have been resolved
             fields = (f for f in field_smart_iter(fields, self))
         else:
-            fields = self._meta.all_fields
-            required_field_names = [f.name for f in self._meta.key_fields]
+            options = getoptions(self)
+            fields = options.all_fields
+            required_field_names = [f.name for f in options.key_fields]
         if is_update:
             # Return with the Value/Action block
             return {
@@ -145,6 +146,13 @@ class Table(ResourceBase):
                     self, fields, required_field_names, skip_null_fields
                 )
             }
+
+
+def getoptions(table: Union[Table, Type[Table]]) -> TableOptions:
+    """
+    Get table options
+    """
+    return cast(TableOptions, getmeta(table))
 
 
 # Register tables as mappable by a standard resource field resolver

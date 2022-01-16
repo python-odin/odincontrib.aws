@@ -4,7 +4,7 @@ Custom fields specifically for AWS Dynamo DB.
 All custom fields inherit from DynamoField which introduces the
 :py:meth`DynamoField.prepare_dynamo` method. This method produces a serialised
 output for Dynamo DB with types included for submission to DynamoDB. In
-addition the :py:meth`odin.Resource.to_python` method has been customised to
+addition, the :py:meth`odin.Resource.to_python` method has been customised to
 parse results in DynamoDB typed JSON.
 
 """
@@ -13,7 +13,9 @@ from odin import fields
 from odin.fields import virtual
 from odin.mapping import force_tuple
 from odin.serializers import datetime_iso_format, date_iso_format, time_iso_format
-from odincontrib_aws.dynamodb import types
+
+from . import types
+from .utils import get_item
 
 __all__ = (
     "StringField",
@@ -43,10 +45,10 @@ class DynamoField(fields.Field):
         """
         if isinstance(value, dict):
             if len(value) == 1:
-                key, value = list(value.items())[0]
+                key, value = get_item(value)
                 if key == types.NULL:
                     return None
-        return super(DynamoField, self).to_python(value)
+        return super().to_python(value)
 
     def prepare_dynamo(self, value):
         """
@@ -135,8 +137,8 @@ class DynamoSetField(fields.Field):
 
         if isinstance(value, dict):
             if len(value) == 1:
-                key, value = list(value.items())[0]
-                if key == "NULL":
+                key, value = get_item(value)
+                if key == types.NULL:
                     return set()
 
         if isinstance(value, (set, list, tuple)):
@@ -172,7 +174,7 @@ class DynamoSetField(fields.Field):
         """
         value = self.prepare(value)
         if value is None:
-            return {"NULL": True}
+            return {types.NULL: True}
         else:
             return {self.type_descriptor: list(value)}
 
@@ -203,6 +205,52 @@ class FloatSetField(DynamoSetField, fields.FloatField):
     """
 
     type_descriptor = "NS"
+
+
+class ListField(DynamoField, fields.TypedListField):
+    """
+    List field
+    """
+    dynamo_type = types.List
+
+    def prepare_dynamo(self, value):
+        if isinstance(value, (tuple, list)):
+            prepare = self.field.prepare_dynamo
+            value = [prepare(v) for v in value]
+
+        return self.dynamo_type(value)
+
+
+class MapField(DynamoField, fields.TypedDictField):
+    """
+    Map field
+    """
+    dynamo_type = types.Map
+
+    def to_python(self, value):
+        """
+        Process a value that may include a Dynamo DB type descriptor.
+
+        :param value: Value to process.
+        :return: Python version of the specified type.
+
+        """
+        if isinstance(value, dict):
+            if len(value) == 1:
+                key, value_ = get_item(value)
+                if key == types.NULL:
+                    return None
+                if key == 'M':
+                    value = value_
+
+        return fields.TypedDictField.to_python(self, value)
+
+    def prepare_dynamo(self, value):
+        if isinstance(value, dict):
+            prepare = self.value_field.prepare_dynamo
+            value = {k: prepare(v) for k, v in value.items()}
+
+        return self.dynamo_type(value)
 
 
 ####################################################################

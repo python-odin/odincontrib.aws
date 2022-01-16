@@ -1,18 +1,19 @@
-from odin.utils import getmeta, cached_property
+from enum import Enum
+from functools import cached_property
+
+from .table import getoptions
 
 __all__ = (
     "LocalIndex",
     "GlobalIndex",
-    "PROJECTION_ALL",
-    "PROJECTION_INCLUDE",
-    "PROJECTION_KEYS_ONLY",
+    "Projection",
 )
 
 
-# Projection constants
-PROJECTION_ALL = "ALL"
-PROJECTION_KEYS_ONLY = "KEYS_ONLY"
-PROJECTION_INCLUDE = "INCLUDE"
+class Projection(Enum):
+    All = "ALL"
+    KeysOnly = "KEYS_ONLY"
+    Include = "INCLUDE"
 
 
 class Index:
@@ -26,7 +27,7 @@ class Index:
         self,
         hash_key,
         range_key=None,
-        projection=PROJECTION_ALL,
+        projection=Projection.All,
         includes=None,
         excludes=None,
         name=None,
@@ -47,17 +48,17 @@ class Index:
     def contribute_to_class(self, cls, name):
         self.set_attributes_from_name(name)
         self.table = cls
-        getmeta(cls).add_index(self)
+        getoptions(cls).add_index(self)
         setattr(cls, name, self)
 
     @cached_property
     def hash_field(self):
-        return getmeta(self.table).all_field_map[self.hash_key]
+        return getoptions(self.table).all_field_map[self.hash_key]
 
     @property
     def range_field(self):
         if self.range_key:
-            return getmeta(self.table).all_field_map[self.range_key]
+            return getoptions(self.table).all_field_map[self.range_key]
 
     @property
     def key_fields(self):
@@ -71,11 +72,11 @@ class Index:
         """
         Used by `include` projection, returns all non-key fields that have been specified.
         """
-        includes = self.includes or getmeta(self.table).all_field_map
+        includes = self.includes or getoptions(self.table).all_field_map
         excludes = self.excludes or []
         return [
             field
-            for field in getmeta(self.table).fields
+            for field in getoptions(self.table).fields
             if field.attname in includes
             and field.attname not in excludes
             and field.attname != self.hash_key
@@ -94,8 +95,8 @@ class Index:
             )
 
         # Generate projection details
-        projection = {"ProjectionType": self.projection}
-        if self.projection == PROJECTION_INCLUDE:
+        projection = {"ProjectionType": self.projection.value}
+        if self.projection == Projection.Include:
             projection["NonKeyAttributes"] = self.included_fields
 
         return {
@@ -152,7 +153,7 @@ class GlobalIndex(Index):
         self,
         hash_key,
         range_key=None,
-        projection=PROJECTION_ALL,
+        projection: Projection = Projection.All,
         includes=None,
         excludes=None,
         read_capacity=None,
@@ -163,7 +164,7 @@ class GlobalIndex(Index):
         :param read_capacity: Override table read capacity
         :param write_capacity: Override table write capacity
         """
-        super(GlobalIndex, self).__init__(
+        super().__init__(
             hash_key, range_key, projection, includes, excludes, name
         )
         self.read_capacity = read_capacity
@@ -171,20 +172,20 @@ class GlobalIndex(Index):
 
     def definition(self, read_capacity=None, write_capacity=None):
         """
-        Generate a Index definition (used to create/update table)
+        Generate an Index definition (used to create/update table)
 
         :param read_capacity: Override default read capacity
         :param write_capacity: Override default write capacity
 
         """
-        meta = getmeta(self.table)
-        definition = super(GlobalIndex, self).definition()
+        options = getoptions(self.table)
+        definition = super().definition()
         definition["ProvisionedThroughput"] = {
             "ReadCapacityUnits": read_capacity
             or self.read_capacity
-            or meta.read_capacity,
+            or options.read_capacity,
             "WriteCapacityUnits": write_capacity
             or self.write_capacity
-            or meta.write_capacity,
+            or options.write_capacity,
         }
         return definition

@@ -1,3 +1,5 @@
+from typing import Tuple, Any, Hashable
+
 from odin.fields import Field
 from odin.resources import create_resource_from_dict
 from odin.utils import getmeta
@@ -60,3 +62,25 @@ def create_bound_table_from_dict(d, table, session, full_clean=True):
     t = create_resource_from_dict(d, table, full_clean, False)
     t.bind_to_session(session)
     return t
+
+
+def get_item(d: dict) -> Tuple[Hashable, Any]:
+    """
+    Extract key, value from a dict with a single item
+    """
+    try:
+        (k, v), = d.items()
+    except ValueError:
+        raise ValueError("Does not contain a single item")
+    return k, v
+
+
+def get_value(d: dict) -> Any:
+    """
+    Extract value from a dict with a single item
+    """
+    try:
+        v, = d.values()
+    except ValueError:
+        raise ValueError("Does not contain a single item")
+    return v

@@ -1,3 +1,5 @@
+import pytest
+
 from odincontrib_aws.dynamodb import utils
 
 from .tables import Book
@@ -61,3 +63,38 @@ def test_domino_field_iter_items__skip_nulls():
         (meta.field_map['fiction'], {'BOOL': True}),
     ] == actual
 
+
+def test_get_item__with_single_item():
+    d = {"a": "b"}
+
+    item = utils.get_item(d)
+
+    assert item == ("a", "b")
+
+
+def test_get_item__no_single_items():
+    with pytest.raises(ValueError):
+        utils.get_item({})
+
+
+def test_get_item__multiple_items():
+    with pytest.raises(ValueError):
+        utils.get_item({"a": "1", "b": "2"})
+
+
+def test_get_value__with_single_item():
+    d = {"a": "b"}
+
+    value = utils.get_value(d)
+
+    assert value == "b"
+
+
+def test_get_value__no_single_items():
+    with pytest.raises(ValueError):
+        utils.get_value({})
+
+
+def test_get_value__multiple_items():
+    with pytest.raises(ValueError):
+        utils.get_value({"a": "1", "b": "2"})
