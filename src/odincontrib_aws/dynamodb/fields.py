@@ -79,7 +79,7 @@ class NumericField(DynamoField):
     def prepare_dynamo(self, value):
         if value is not None:
             value = str(value)
-        return super(NumericField, self).prepare_dynamo(value)
+        return super().prepare_dynamo(value)
 
 
 class IntegerField(NumericField, fields.IntegerField):
@@ -211,6 +211,7 @@ class ListField(DynamoField, fields.TypedListField):
     """
     List field
     """
+
     dynamo_type = types.List
 
     def prepare_dynamo(self, value):
@@ -225,6 +226,7 @@ class MapField(DynamoField, fields.TypedDictField):
     """
     Map field
     """
+
     dynamo_type = types.Map
 
     def to_python(self, value):
@@ -240,7 +242,7 @@ class MapField(DynamoField, fields.TypedDictField):
                 key, value_ = get_item(value)
                 if key == types.NULL:
                     return None
-                if key == 'M':
+                if key == "M":
                     value = value_
 
         return fields.TypedDictField.to_python(self, value)

@@ -120,7 +120,10 @@ class Session:
 
         # Build attribute definitions
         kwargs["AttributeDefinitions"] = [
-            {"AttributeName": field.name, "AttributeType": field.type_descriptor}
+            {
+                "AttributeName": field.name,
+                "AttributeType": field.dynamo_type.type_descriptor,
+            }
             for field in attributes
         ]
 
