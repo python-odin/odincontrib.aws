@@ -2,12 +2,12 @@ import nox
 from nox.sessions import Session
 
 
-@nox.session(python="3.8", reuse_venv=True)
+@nox.session(python="3.10", reuse_venv=True)
 def tests(session: Session):
     # fmt: off
     session.run(
         "poetry", "export",
-        "--dev",
+        "--dev", "--without-hashes",
         "-o", "requirements.txt",
         external=True,
     )
